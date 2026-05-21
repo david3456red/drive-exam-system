@@ -1,0 +1,224 @@
+// =============================================================================
+// Drive Exam System - Prisma Schema
+// SQLite-based. Enums are represented as Strings (SQLite compatibility).
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Auth & RBAC
+// -----------------------------------------------------------------------------
+
+/// User status: ACTIVE | FROZEN | DISABLED
+model User {
+  id                 String   @id @default(cuid())
+  username           String   @unique
+  name               String?
+  passwordHash       String
+  /// ACTIVE | FROZEN | DISABLED
+  status             String   @default("ACTIVE")
+  mustChangePassword Boolean  @default(true)
+  roleId             String
+  role               Role     @relation(fields: [roleId], references: [id])
+  createdById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  loginLogs      LoginLog[]
+  examAttempts   ExamAttempt[]
+  wrongQuestions WrongQuestion[]
+
+  @@index([roleId])
+  @@index([status])
+}
+
+model Role {
+  /// Built-in role names: super_admin | admin | teacher | student_strict | student_normal
+  id          String  @id @default(cuid())
+  name        String  @unique
+  displayName String
+  /// If true, login from a different IP OR different device freezes the user.
+  strictLogin Boolean @default(false)
+  isBuiltin   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id        String @id @default(cuid())
+  /// e.g. "question:create", "user:delete"
+  code      String @unique
+  name      String
+  groupName String @default("")
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+/// Audit log for every login attempt (success / failure / freeze).
+model LoginLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip        String
+  deviceId  String
+  userAgent String?
+  success   Boolean
+  /// e.g. "wrong_password", "frozen_remote_login", "account_disabled"
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// Question banks & categories
+// -----------------------------------------------------------------------------
+
+model QuestionBank {
+  id          String   @id @default(cuid())
+  /// short code, e.g. "subject_1", "subject_4"
+  code        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  isBuiltin   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions  Question[]
+  categories Category[]
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  bankId    String
+  bank      QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  name      String
+  parentId  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  questions QuestionCategory[]
+
+  @@unique([bankId, parentId, name])
+  @@index([bankId])
+}
+
+/// Question type: SINGLE (single choice) | MULTI (multi choice) | JUDGE (T/F)
+model Question {
+  id          String   @id @default(cuid())
+  bankId      String
+  bank        QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  /// SINGLE | MULTI | JUDGE
+  type        String
+  content     String
+  imageUrl    String?
+  /// JSON string: [{ "key":"A", "text":"..."}, ...]  (empty array for JUDGE)
+  options     String   @default("[]")
+  /// "B" for SINGLE, "AC" for MULTI, "T"/"F" for JUDGE
+  answer      String
+  explanation String?
+  /// comma-separated tags
+  tags        String   @default("")
+  source      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categories  QuestionCategory[]
+  examRecords ExamRecord[]
+  wrongUsers  WrongQuestion[]
+
+  @@index([bankId])
+  @@index([type])
+}
+
+model QuestionCategory {
+  questionId String
+  categoryId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, categoryId])
+  @@index([questionId])
+  @@index([categoryId])
+}
+
+// -----------------------------------------------------------------------------
+// Exam attempts & wrong-question book
+// -----------------------------------------------------------------------------
+
+model ExamAttempt {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankId       String?
+  /// SEQUENTIAL | RANDOM | CHAPTER | MOCK | WRONG_REVIEW
+  mode         String
+  /// ONGOING | FINISHED | ABANDONED
+  status       String    @default("ONGOING")
+  totalCount   Int       @default(0)
+  correctCount Int       @default(0)
+  score        Int?
+  durationMs   Int?
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+
+  records ExamRecord[]
+
+  @@index([userId])
+  @@index([startedAt])
+}
+
+model ExamRecord {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question    @relation(fields: [questionId], references: [id])
+  userAnswer String
+  isCorrect  Boolean
+  costMs     Int?
+  answeredAt DateTime    @default(now())
+
+  @@index([attemptId])
+}
+
+model WrongQuestion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  wrongCount  Int      @default(1)
+  rightCount  Int      @default(0)
+  mastered    Boolean  @default(false)
+  lastWrongAt DateTime @default(now())
+
+  @@unique([userId, questionId])
+  @@index([userId])
+  @@index([mastered])
+}
