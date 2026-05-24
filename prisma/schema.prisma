@@ -190,10 +190,23 @@ model ExamAttempt {
   startedAt    DateTime  @default(now())
   finishedAt   DateTime?
 
+  /// JSON 数组形式的题目顺序快照（question.id[]）：
+  /// SEQUENTIAL/CHAPTER 存按 createdAt 升序的快照，
+  /// RANDOM/MOCK 存打乱后的快照，
+  /// WRONG_REVIEW 存按 lastWrongAt 降序的快照。
+  questionOrder String   @default("[]")
+  /// 0-based 当前题号，用于断点续答与进度展示。
+  currentIndex  Int      @default(0)
+  /// 章节模式所选分类 ID 数组，JSON 字符串，其它模式为空数组。
+  categoryIds   String   @default("[]")
+  /// 仅 MOCK 模式使用，倒计时截止时间；其它模式为 null。
+  expiresAt     DateTime?
+
   records ExamRecord[]
 
   @@index([userId])
   @@index([startedAt])
+  @@index([userId, mode, status])
 }
 
 model ExamRecord {

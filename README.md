@@ -26,17 +26,23 @@
   /admin/login            后台登录(管理员 / 教练 / 超级管理员)
 
 学生前台 (group: (student))
-  /exam                   题库列表 + 答题入口
-  /exam/wrong             错题本
-  /exam/history           答题记录
+  /exam                              题库 + 模式选择(顺序/随机/章节/模考/错题重做)
+  /exam/session/[attemptId]          答题主界面(按模式分派 Player)
+  /exam/session/[attemptId]/result   答题成绩汇总
+  /exam/wrong                        错题本(筛选 + 标记掌握)
+  /exam/history                      答题记录列表
+  /exam/history/[attemptId]          单次答题逐题详情
 
 后台
   /admin                  工作台
   /admin/banks            题库
   /admin/questions        题目(导入)
+  /admin/categories       全局分类
   /admin/users            用户管理
   /admin/roles            角色权限列表
   /admin/roles/[id]/edit  ★ 编辑角色权限(仅超级管理员)
+  /admin/student-stats    ★ 学员成绩(教练 / 管理员可见)
+  /admin/student-stats/[userId]  单学员答题历史
   /admin/login-logs       登录日志
 
 通用
@@ -185,10 +191,25 @@ SQLite 数据持久化在 `./data/prod.db`,直接复制此文件即可备份。
 - [x] 导入流程:**预览校验** → 看到合法/不合法行数 + 错误明细 → **确认导入**
 - [x] 导入时自动 upsert 全局分类,已存在则复用
 
+### P3(答题模式 + 错题本 + 教练统计)
+- [x] **五种答题模式**:顺序练习 / 随机练习 / 章节练习 / 模拟考试 / 错题重做
+- [x] **统一答题引擎**(`src/lib/exam-engine/`):judger / wrongbook / snapshot / question-loader / queries
+- [x] **会话快照**:创建会话时冻结题目顺序与筛选范围,后续题库变化不影响进行中会话
+- [x] **断点续答**:非模考会话支持中途离开后从原位置继续
+- [x] **模拟考试**:倒计时(科一 45 分钟 / 科四 30 分钟)、90% 通过线、超时自动交卷、防回退
+- [x] **模考超时兜底**:`adoptExpiredMock` 自动结算遗留过期会话
+- [x] **错题本状态机**:连续答对 3 次自动标记掌握,答错时重置;支持手动切换
+- [x] **答题记录**(`/exam/history`)+ 逐题详情(选项高亮 + 解析)
+- [x] **错题本管理**(`/exam/wrong`):题库 / 掌握状态筛选,乐观更新
+- [x] **教练查看学员成绩**(`/admin/student-stats`):学员列表 + 单学员答题历史 + 题库/模式筛选
+- [x] **响应式答题界面**:单选/多选/判断题适配,图片加载失败占位
+- [x] **离场处理**:模考关闭浏览器时通过 `sendBeacon` 自动 abandon
+- [x] **测试基建**:Vitest + fast-check + jsdom + Testing Library
+
 ## 待实现
 
-- [ ] **P3**:答题模式(顺序 / 随机 / 章节 / 模拟考试 / 错题重做)
 - [ ] **P4**:用户管理、用户 CRUD、解冻、重置密码
+- [ ] **P5**:数据统计(学员仪表盘、班级排行、知识点掌握度、答题趋势图)
 - [ ] **P6**:题库抓取
 
 ## 题目导入格式

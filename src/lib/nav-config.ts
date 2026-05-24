@@ -46,5 +46,6 @@ export const ADMIN_NAV: NavItem[] = [
 
   { href: '/admin/users', label: '用户', iconKey: 'users', permission: 'user:read', group: '系统' },
   { href: '/admin/roles', label: '角色权限', iconKey: 'shield', permission: 'role:read', group: '系统' },
+  { href: '/admin/student-stats', label: '学员成绩', iconKey: 'history', permission: 'stats:all', group: '系统' },
   { href: '/admin/login-logs', label: '登录日志', iconKey: 'scrollText', permission: 'system:login_log', group: '系统' },
 ];
