@@ -34,16 +34,16 @@ export async function createQuestion(input: QuestionFormInput): Promise<ActionRe
   const bank = await prisma.questionBank.findUnique({ where: { id: data.bankId } });
   if (!bank) return { ok: false, error: '题库不存在' };
 
-  // Validate categoryIds belong to this bank.
+  // Validate categoryIds exist (categories are global, not bank-scoped).
   if (data.categoryIds.length > 0) {
     const cats = await prisma.category.findMany({
-      where: { id: { in: data.categoryIds }, bankId: data.bankId },
+      where: { id: { in: data.categoryIds } },
       select: { id: true },
     });
     const valid = new Set(cats.map((c) => c.id));
     const invalid = data.categoryIds.filter((id) => !valid.has(id));
     if (invalid.length > 0) {
-      return { ok: false, error: `分类不属于当前题库:${invalid.join(', ')}` };
+      return { ok: false, error: `分类不存在:${invalid.join(', ')}` };
     }
   }
 
@@ -83,16 +83,16 @@ export async function updateQuestion(
   const existing = await prisma.question.findUnique({ where: { id } });
   if (!existing) return { ok: false, error: '题目不存在' };
 
-  // Validate categoryIds belong to selected bank
+  // Validate categoryIds exist (categories are global)
   if (data.categoryIds.length > 0) {
     const cats = await prisma.category.findMany({
-      where: { id: { in: data.categoryIds }, bankId: data.bankId },
+      where: { id: { in: data.categoryIds } },
       select: { id: true },
     });
     const valid = new Set(cats.map((c) => c.id));
     const invalid = data.categoryIds.filter((id) => !valid.has(id));
     if (invalid.length > 0) {
-      return { ok: false, error: `分类不属于当前题库:${invalid.join(', ')}` };
+      return { ok: false, error: `分类不存在:${invalid.join(', ')}` };
     }
   }
 
@@ -131,12 +131,10 @@ export async function deleteQuestion(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-/** Fetch categories for the dynamic category-picker on the question form. */
-export async function listCategoriesByBank(bankId: string) {
-  if (!bankId) return [] as { id: string; name: string }[];
+/** Fetch all global categories for the question form's multi-select. */
+export async function listAllCategories() {
   return prisma.category.findMany({
-    where: { bankId },
-    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    select: { id: true, name: true },
+    orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+    select: { id: true, name: true, parentId: true },
   });
 }

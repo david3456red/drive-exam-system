@@ -107,14 +107,15 @@ model QuestionBank {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  questions  Question[]
-  categories Category[]
+  questions Question[]
 }
 
+/// Categories are global -- a single "交通信号" can be attached to questions
+/// from any bank. Whether a category "belongs to" a particular bank is
+/// derived: it's the set of categories tagged on at least one question of
+/// that bank.
 model Category {
   id        String     @id @default(cuid())
-  bankId    String
-  bank      QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
   name      String
   parentId  String?
   parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
@@ -124,8 +125,10 @@ model Category {
 
   questions QuestionCategory[]
 
-  @@unique([bankId, parentId, name])
-  @@index([bankId])
+  /// Top-level (parentId=null) uniqueness is also enforced in application
+  /// code because SQL @@unique treats NULL as distinct.
+  @@unique([parentId, name])
+  @@index([parentId])
 }
 
 /// Question type: SINGLE (single choice) | MULTI (multi choice) | JUDGE (T/F)

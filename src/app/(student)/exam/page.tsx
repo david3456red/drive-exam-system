@@ -6,10 +6,13 @@ export default async function ExamHomePage() {
   const session = await auth();
   const u = session!.user;
 
+  // Banks list with question counts. (Categories are global -- a separate
+  // "categories used by this bank" view will appear once the per-bank
+  // practice flow lands in P3.)
   const banks = await prisma.questionBank.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: 'asc' },
-    include: { _count: { select: { questions: true, categories: true } } },
+    include: { _count: { select: { questions: true } } },
   });
 
   return (
@@ -28,7 +31,6 @@ export default async function ExamHomePage() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-1">
               <div>共 <span className="font-mono text-foreground">{b._count.questions}</span> 题</div>
-              <div className="text-xs">{b._count.categories} 个分类</div>
             </CardContent>
           </Card>
         ))}

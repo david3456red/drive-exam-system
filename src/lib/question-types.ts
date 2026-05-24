@@ -150,7 +150,6 @@ export const BankFormSchema = z.object({
 export type BankFormInput = z.infer<typeof BankFormSchema>;
 
 export const CategoryFormSchema = z.object({
-  bankId: z.string().min(1),
   name: z.string().min(1, '名称不能为空').max(60),
   parentId: z.string().nullable().optional(),
   sortOrder: z.coerce.number().int().min(0).default(0),
