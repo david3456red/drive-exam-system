@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { changePassword } from './actions';
 
-export function ChangePasswordForm({ forced }: { forced: boolean }) {
+export function ChangePasswordForm({ homeHref }: { homeHref: string }) {
   const router = useRouter();
-  const { update } = useSession();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState('');
 
@@ -32,17 +31,9 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         toast.error(res.error);
         return;
       }
-      toast.success('密码修改成功');
-
-      if (forced) {
-        // Update JWT so middleware no longer redirects to /change-password.
-        await update({ mustChangePassword: false });
-        router.push('/dashboard');
-        router.refresh();
-      } else {
-        // Force re-login for security after voluntary password change.
-        await signOut({ callbackUrl: '/login' });
-      }
+      toast.success('密码修改成功,请重新登录');
+      // Always force re-login after a password change.
+      await signOut({ callbackUrl: homeHref === '/admin' ? '/admin/login' : '/login' });
     });
   }
 
@@ -66,9 +57,14 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         <Label htmlFor="confirm">确认新密码</Label>
         <Input id="confirm" name="confirm" type="password" autoComplete="new-password" required />
       </div>
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? '提交中...' : '修改密码'}
-      </Button>
+      <div className="flex gap-2 pt-2">
+        <Button type="button" variant="outline" className="flex-1" onClick={() => router.push(homeHref)}>
+          取消
+        </Button>
+        <Button type="submit" className="flex-1" disabled={pending}>
+          {pending ? '提交中...' : '修改密码'}
+        </Button>
+      </div>
     </form>
   );
 }

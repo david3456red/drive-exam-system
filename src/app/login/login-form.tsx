@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { isBackendRole } from '@/lib/role-checks';
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: '账号或密码错误',
@@ -20,7 +21,15 @@ const ERROR_MESSAGES: Record<string, string> = {
   CredentialsSignin: '登录失败,请稍后再试',
 };
 
-export function LoginForm() {
+/**
+ * Shared login form.
+ *
+ * - portal="student": admin/teacher accounts get redirected to /admin
+ *   after successful login (with a notice).
+ * - portal="admin":   student accounts get redirected to /exam
+ *   after successful login (with a notice).
+ */
+export function LoginForm({ portal }: { portal: 'student' | 'admin' }) {
   const router = useRouter();
   const search = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -72,9 +81,36 @@ export function LoginForm() {
         toast.error(msg);
         return;
       }
-      toast.success('登录成功');
-      const next = search.get('callbackUrl') || '/dashboard';
-      router.push(next);
+
+      // Determine target based on actual role from the session.
+      const sessionRes = await fetch('/api/auth/session', { cache: 'no-store' });
+      const session = await sessionRes.json().catch(() => null);
+      const role: string | undefined = session?.user?.roleName;
+      const isAdmin = isBackendRole(role);
+
+      const callbackUrl = search.get('callbackUrl') || null;
+      let target: string;
+
+      if (portal === 'student') {
+        if (isAdmin) {
+          toast.info('您是管理员账号,已为您跳转到后台');
+          target = '/admin';
+        } else {
+          target = callbackUrl ?? '/exam';
+          toast.success('登录成功');
+        }
+      } else {
+        // portal === 'admin'
+        if (!isAdmin) {
+          toast.info('您是学生账号,已为您跳转到学生入口');
+          target = '/exam';
+        } else {
+          target = callbackUrl ?? '/admin';
+          toast.success('登录成功');
+        }
+      }
+
+      router.push(target);
       router.refresh();
     });
   }
