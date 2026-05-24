@@ -14,6 +14,7 @@
 | 设备识别 | FingerprintJS |
 | 导入 | JSON (内置) + xlsx (Excel) |
 | 部署 | Docker + docker-compose |
+| 包管理器 | **pnpm** (固定 v9.15.4 via corepack) |
 
 ## 核心特性
 
@@ -25,19 +26,22 @@
 
 ## 本地开发
 
+> 需要 Node.js 22+。**包管理器固定为 pnpm**(通过 `corepack` 自动启用,版本由 `package.json` 的 `packageManager` 字段锁定)。
+> 第一次使用 pnpm 的话,先开启 corepack:`corepack enable`。
+
 ```bash
 # 1. 安装依赖
-npm install
+pnpm install
 
 # 2. 准备环境变量
 cp .env.example .env
 
 # 3. 创建数据库 + 应用迁移 + 种子数据
-npm run db:push
-npm run db:seed
+pnpm db:push
+pnpm db:seed
 
 # 4. 启动 dev server
-npm run dev
+pnpm dev
 # 访问 http://localhost:3000
 # 默认账号:admin / Admin@123 (首次登录会强制改密)
 ```
@@ -46,16 +50,16 @@ npm run dev
 
 | 命令 | 说明 |
 |------|------|
-| `npm run dev` | 开发服务器 |
-| `npm run build` | 生产构建(含 prisma generate) |
-| `npm run start` | 启动生产服务器 |
-| `npm run db:push` | 同步 schema 到数据库(开发用) |
-| `npm run db:migrate` | 创建并应用迁移(生产用) |
-| `npm run db:seed` | 写入种子数据 |
-| `npm run db:reset` | 重置数据库(开发用,危险) |
-| `npm run db:studio` | 打开 Prisma Studio |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript 检查 |
+| `pnpm dev` | 开发服务器 |
+| `pnpm build` | 生产构建(含 prisma generate) |
+| `pnpm start` | 启动生产服务器 |
+| `pnpm db:push` | 同步 schema 到数据库(开发用) |
+| `pnpm db:migrate` | 创建并应用迁移(生产用) |
+| `pnpm db:seed` | 写入种子数据 |
+| `pnpm db:reset` | 重置数据库(开发用,危险) |
+| `pnpm db:studio` | 打开 Prisma Studio |
+| `pnpm lint` | ESLint |
+| `pnpm typecheck` | TypeScript 检查 |
 
 ## 角色与权限
 
@@ -121,6 +125,7 @@ SQLite 数据持久化在 `./data/prod.db`,直接复制此文件即可备份。
 - [x] 登录日志页
 - [x] Docker / docker-compose / 部署文档
 - [x] 种子数据(5 角色 + 30 权限 + 2 题库 + admin 账号)
+- [x] 切换到 pnpm(固定 v9.15.4 via corepack)
 
 ## 待实现
 
