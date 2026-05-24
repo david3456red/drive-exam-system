@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Topbar } from './topbar';
+import { NavIcon } from './nav-icon';
 import type { NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +31,6 @@ export function StudentShell({
       <nav className="sticky top-14 z-20 bg-background/95 backdrop-blur border-b">
         <div className="max-w-3xl mx-auto px-2 flex overflow-x-auto">
           {navItems.map((item) => {
-            const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link
@@ -43,7 +43,7 @@ export function StudentShell({
                     : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <NavIcon iconKey={item.iconKey} className="h-4 w-4" />
                 <span>{item.label}</span>
               </Link>
             );

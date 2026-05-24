@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { NavItem } from '@/lib/nav-config';
+import { NavIcon } from './nav-icon';
 
 export function Sidebar({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
@@ -31,7 +32,6 @@ export function Sidebar({ items }: { items: NavItem[] }) {
           )}
           <ul className="flex flex-col gap-0.5">
             {g.items.map((item) => {
-              const Icon = item.icon;
               const active = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <li key={item.href}>
@@ -44,7 +44,7 @@ export function Sidebar({ items }: { items: NavItem[] }) {
                         : 'text-foreground hover:bg-accent hover:text-accent-foreground',
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <NavIcon iconKey={item.iconKey} className="h-4 w-4" />
                     <span>{item.label}</span>
                   </Link>
                 </li>

@@ -4,8 +4,9 @@
  * - Credentials provider: looks the user up via Prisma, verifies bcrypt
  *   password, enforces "异地登录冻结" (remote-login freeze) for roles whose
  *   `strictLogin = true`, and writes a `LoginLog` row for every attempt.
- * - JWT session: caches role + permission codes in the token so most
- *   permission checks don't hit the DB.
+ * - JWT/session/authorized callbacks live in `auth.config.ts` so the edge
+ *   middleware sees the same projection (roleName, permissions) we use
+ *   server-side. Do NOT override them here.
  */
 import NextAuth, { CredentialsSignin } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
@@ -158,47 +159,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    ...authConfig.callbacks,
-    async jwt({ token, user, trigger, session }) {
-      // On initial sign-in, copy fields to the token.
-      if (user) {
-        const u = user as unknown as {
-          id: string;
-          username: string;
-          name: string | null;
-          roleName: string;
-          permissions: string[];
-          mustChangePassword: boolean;
-        };
-        token.id = u.id;
-        token.username = u.username;
-        token.name = u.name;
-        token.roleName = u.roleName;
-        token.permissions = u.permissions;
-        token.mustChangePassword = u.mustChangePassword;
-      }
-
-      // Allow the client to push a session.update({ mustChangePassword: false })
-      // after a successful password change.
-      if (trigger === 'update' && session) {
-        if (typeof session.mustChangePassword === 'boolean') {
-          token.mustChangePassword = session.mustChangePassword;
-        }
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.username = token.username as string;
-        session.user.name = (token.name as string | null) ?? null;
-        session.user.roleName = token.roleName as string;
-        session.user.permissions = (token.permissions as string[]) ?? [];
-        session.user.mustChangePassword = Boolean(token.mustChangePassword);
-      }
-      return session;
-    },
-  },
+  // Callbacks (jwt/session/authorized) come from authConfig — do not override
+  // them here, otherwise the edge middleware (which uses authConfig only)
+  // would see different behaviour than server-side `auth()`.
 });
