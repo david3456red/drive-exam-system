@@ -16,8 +16,32 @@ async function requirePerm(code: string) {
   return { ok: true as const };
 }
 
+/**
+ * Application-level uniqueness check for the (parentId, name) pair.
+ * SQLite's @@unique([parentId, name]) does NOT prevent duplicates when
+ * `parentId IS NULL`, so we always check manually.
+ */
+async function ensureUnique(
+  name: string,
+  parentId: string | null,
+  excludeId?: string,
+): Promise<string | null> {
+  const collide = await prisma.category.findFirst({
+    where: {
+      name,
+      parentId,
+      ...(excludeId ? { NOT: { id: excludeId } } : {}),
+    },
+  });
+  if (collide) {
+    return parentId === null
+      ? `顶层已存在分类 "${name}"`
+      : `父分类下已存在 "${name}"`;
+  }
+  return null;
+}
+
 export async function createCategory(input: {
-  bankId: string;
   name: string;
   parentId?: string | null;
   sortOrder?: number;
@@ -28,33 +52,30 @@ export async function createCategory(input: {
   const parsed = CategoryFormSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? '提交不合法' };
 
-  const bank = await prisma.questionBank.findUnique({ where: { id: parsed.data.bankId } });
-  if (!bank) return { ok: false, error: '题库不存在' };
+  const parentId = parsed.data.parentId ?? null;
+  if (parentId) {
+    const parent = await prisma.category.findUnique({ where: { id: parentId } });
+    if (!parent) return { ok: false, error: '父分类不存在' };
+  }
 
-  const collide = await prisma.category.findFirst({
-    where: {
-      bankId: parsed.data.bankId,
-      parentId: parsed.data.parentId ?? null,
-      name: parsed.data.name,
-    },
-  });
-  if (collide) return { ok: false, error: `分类 "${parsed.data.name}" 已存在` };
+  const dup = await ensureUnique(parsed.data.name, parentId);
+  if (dup) return { ok: false, error: dup };
 
   await prisma.category.create({
     data: {
-      bankId: parsed.data.bankId,
       name: parsed.data.name,
-      parentId: parsed.data.parentId ?? null,
+      parentId,
       sortOrder: parsed.data.sortOrder,
     },
   });
-  revalidatePath(`/admin/banks/${parsed.data.bankId}`);
+  revalidatePath('/admin/categories');
   return { ok: true };
 }
 
 export async function updateCategory(input: {
   id: string;
   name: string;
+  parentId?: string | null;
   sortOrder?: number;
 }): Promise<ActionResult> {
   const a = await requirePerm('category:update');
@@ -67,26 +88,29 @@ export async function updateCategory(input: {
   if (!name) return { ok: false, error: '名称不能为空' };
   if (name.length > 60) return { ok: false, error: '名称过长' };
 
-  if (name !== cat.name) {
-    const collide = await prisma.category.findFirst({
-      where: {
-        bankId: cat.bankId,
-        parentId: cat.parentId,
-        name,
-        NOT: { id: input.id },
-      },
-    });
-    if (collide) return { ok: false, error: `同级已存在分类 "${name}"` };
+  const parentId = input.parentId === undefined ? cat.parentId : (input.parentId ?? null);
+  if (parentId === input.id) return { ok: false, error: '父分类不能选自己' };
+  if (parentId) {
+    const parent = await prisma.category.findUnique({ where: { id: parentId } });
+    if (!parent) return { ok: false, error: '父分类不存在' };
+  }
+
+  if (name !== cat.name || parentId !== cat.parentId) {
+    const dup = await ensureUnique(name, parentId, input.id);
+    if (dup) return { ok: false, error: dup };
   }
 
   await prisma.category.update({
     where: { id: input.id },
     data: {
       name,
-      sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : cat.sortOrder,
+      parentId,
+      sortOrder:
+        typeof input.sortOrder === 'number' ? input.sortOrder : cat.sortOrder,
     },
   });
-  revalidatePath(`/admin/banks/${cat.bankId}`);
+  revalidatePath('/admin/categories');
+  revalidatePath('/admin/banks');
   return { ok: true };
 }
 
@@ -104,10 +128,10 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
   if (cat._count.children > 0) {
     return { ok: false, error: '请先删除子分类' };
   }
-  // We allow deleting a category that's still attached to questions; the
-  // QuestionCategory rows are removed by ON DELETE CASCADE. The questions
-  // themselves stay.
+  // QuestionCategory rows cascade away; the question records themselves
+  // are not deleted.
   await prisma.category.delete({ where: { id } });
-  revalidatePath(`/admin/banks/${cat.bankId}`);
+  revalidatePath('/admin/categories');
+  revalidatePath('/admin/banks');
   return { ok: true };
 }

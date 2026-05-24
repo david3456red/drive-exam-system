@@ -18,7 +18,7 @@ import {
   type QuestionType,
   type QuestionOption,
 } from '@/lib/question-types';
-import { createQuestion, updateQuestion, listCategoriesByBank } from './actions';
+import { createQuestion, updateQuestion, listAllCategories } from './actions';
 
 export type QuestionFormInitial = {
   id?: string;
@@ -66,28 +66,19 @@ export function QuestionForm({
     initial?.categoryIds ?? [],
   );
 
-  const [allCategories, setAllCategories] = useState<{ id: string; name: string }[]>([]);
-
-  // Reload categories whenever the bank changes.
+  // Categories are global -- load them once on mount.
+  const [allCategories, setAllCategories] = useState<
+    { id: string; name: string; parentId: string | null }[]
+  >([]);
   useEffect(() => {
-    if (!bankId) {
-      setAllCategories([]);
-      return;
-    }
     let cancelled = false;
-    listCategoriesByBank(bankId).then((cats) => {
+    listAllCategories().then((cats) => {
       if (!cancelled) setAllCategories(cats);
     });
     return () => {
       cancelled = true;
     };
-  }, [bankId]);
-
-  // When bank changes, drop category selections that no longer apply.
-  useEffect(() => {
-    const valid = new Set(allCategories.map((c) => c.id));
-    setSelectedCategoryIds((prev) => prev.filter((id) => valid.has(id)));
-  }, [allCategories]);
+  }, []);
 
   const usedKeys = useMemo(() => new Set(options.map((o) => o.key.toUpperCase())), [options]);
   const nextKey = useMemo(() => {
@@ -279,11 +270,17 @@ export function QuestionForm({
       </div>
 
       <div className="space-y-2">
-        <Label>分类(可选)</Label>
+        <Label>分类(全局,可挂多个)</Label>
         {allCategories.length === 0 ? (
-          <p className="text-xs text-muted-foreground">该题库还没有分类。</p>
+          <p className="text-xs text-muted-foreground">
+            还没有分类。可以去{' '}
+            <a href="/admin/categories" className="text-primary underline">
+              分类管理
+            </a>{' '}
+            建一些。
+          </p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border rounded-md p-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border rounded-md p-3 max-h-60 overflow-y-auto">
             {allCategories.map((cat) => (
               <label key={cat.id} className="flex items-center gap-2 cursor-pointer text-sm">
                 <Checkbox

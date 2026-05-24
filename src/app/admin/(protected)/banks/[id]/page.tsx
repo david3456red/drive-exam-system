@@ -15,27 +15,33 @@ export default async function BankEditPage({ params }: { params: { id: string } 
 
   const bank = await prisma.questionBank.findUnique({
     where: { id: params.id },
-    include: {
-      _count: { select: { questions: true } },
-      categories: {
-        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-        include: { _count: { select: { questions: true } } },
-      },
-    },
+    include: { _count: { select: { questions: true } } },
   });
   if (!bank) notFound();
 
-  const canUpdateBank = hasPermission(u, 'bank:update');
-  const canCreateCat = hasPermission(u, 'category:create');
-  const canUpdateCat = hasPermission(u, 'category:update');
-  const canDeleteCat = hasPermission(u, 'category:delete');
-
-  const initialCategories = bank.categories.map((c) => ({
+  // "Categories of this bank" = categories tagged on at least one question
+  // belonging to this bank (categories are global, not bank-scoped).
+  const usage = await prisma.questionCategory.groupBy({
+    by: ['categoryId'],
+    where: { question: { bankId: bank.id } },
+    _count: { _all: true },
+  });
+  const categoryIds = usage.map((u) => u.categoryId);
+  const categoryRows = categoryIds.length
+    ? await prisma.category.findMany({
+        where: { id: { in: categoryIds } },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      })
+    : [];
+  const usageById = new Map(usage.map((u) => [u.categoryId, u._count._all]));
+  const categories = categoryRows.map((c) => ({
     id: c.id,
     name: c.name,
-    sortOrder: c.sortOrder,
-    questionCount: c._count.questions,
+    questionCount: usageById.get(c.id) ?? 0,
   }));
+
+  const canUpdateBank = hasPermission(u, 'bank:update');
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -68,13 +74,7 @@ export default async function BankEditPage({ params }: { params: { id: string } 
         </CardContent>
       </Card>
 
-      <CategorySection
-        bankId={bank.id}
-        initial={initialCategories}
-        canCreate={canCreateCat}
-        canUpdate={canUpdateCat}
-        canDelete={canDeleteCat}
-      />
+      <CategorySection categories={categories} />
 
       <div className="text-sm text-muted-foreground border-t pt-4">
         题库共 <span className="font-mono text-foreground">{bank._count.questions}</span> 道题。

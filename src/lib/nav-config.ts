@@ -15,6 +15,7 @@ export type IconKey =
   | 'history'
   | 'library'
   | 'listChecks'
+  | 'tag'
   | 'users'
   | 'shield'
   | 'scrollText';
@@ -40,6 +41,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: '工作台', iconKey: 'dashboard', permission: null, group: '主页' },
 
   { href: '/admin/banks', label: '题库', iconKey: 'library', permission: 'bank:read', group: '内容' },
+  { href: '/admin/categories', label: '分类', iconKey: 'tag', permission: 'category:read', group: '内容' },
   { href: '/admin/questions', label: '题目', iconKey: 'listChecks', permission: 'question:read', group: '内容' },
 
   { href: '/admin/users', label: '用户', iconKey: 'users', permission: 'user:read', group: '系统' },

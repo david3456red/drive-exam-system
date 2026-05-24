@@ -152,13 +152,13 @@ export async function commitImport(fd: FormData): Promise<CommitResult | ImportF
     for (const name of v.data.categories) allCatNames.add(name);
   }
 
-  // Upsert categories (only top-level — name uniqueness within bankId+parentId=null).
+  // Upsert categories globally (categories are no longer bank-scoped).
   const newCategories: string[] = [];
   const catNameToId = new Map<string, string>();
 
   if (allCatNames.size > 0) {
     const existing = await prisma.category.findMany({
-      where: { bankId, parentId: null, name: { in: Array.from(allCatNames) } },
+      where: { parentId: null, name: { in: Array.from(allCatNames) } },
       select: { id: true, name: true },
     });
     for (const c of existing) catNameToId.set(c.name, c.id);
@@ -168,7 +168,7 @@ export async function commitImport(fd: FormData): Promise<CommitResult | ImportF
       // Create one-by-one because createMany doesn't return ids on SQLite.
       for (const name of missing) {
         const created = await prisma.category.create({
-          data: { bankId, name, parentId: null, sortOrder: 0 },
+          data: { name, parentId: null, sortOrder: 0 },
           select: { id: true, name: true },
         });
         catNameToId.set(created.name, created.id);
@@ -210,6 +210,7 @@ export async function commitImport(fd: FormData): Promise<CommitResult | ImportF
 
   revalidatePath('/admin/questions');
   revalidatePath('/admin/banks');
+  revalidatePath('/admin/categories');
 
   return {
     ok: true,

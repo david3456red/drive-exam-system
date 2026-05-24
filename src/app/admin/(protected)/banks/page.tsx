@@ -20,7 +20,7 @@ export default async function BanksPage() {
 
   const banks = await prisma.questionBank.findMany({
     orderBy: { sortOrder: 'asc' },
-    include: { _count: { select: { questions: true, categories: true } } },
+    include: { _count: { select: { questions: true } } },
   });
 
   return (
@@ -57,7 +57,6 @@ export default async function BanksPage() {
             </CardHeader>
             <CardContent className="flex-1 flex flex-col text-sm space-y-1">
               <div>题目: <span className="font-mono">{b._count.questions}</span></div>
-              <div>分类: <span className="font-mono">{b._count.categories}</span></div>
               <div className="flex-1" />
               <div className="flex gap-2 pt-3 flex-wrap">
                 {canUpdate && (
