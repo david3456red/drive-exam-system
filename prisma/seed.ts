@@ -199,10 +199,10 @@ async function main() {
         passwordHash,
         roleId: superAdmin.id,
         status: 'ACTIVE',
-        mustChangePassword: true,
+        mustChangePassword: false,
       },
     });
-    console.log(`  ✓ super-admin account created: ${username} / ${password} (must change on first login)`);
+    console.log(`  ✓ super-admin account created: ${username} / ${password}`);
   } else {
     console.log(`  • super-admin "${username}" already exists, skipping`);
   }

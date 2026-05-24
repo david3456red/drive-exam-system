@@ -15,7 +15,7 @@ const REASON_DISPLAY: Record<string, string> = {
 
 export default async function LoginLogsPage() {
   const session = await auth();
-  if (!hasPermission(session!.user, 'system:login_log')) redirect('/dashboard');
+  if (!hasPermission(session!.user, 'system:login_log')) redirect('/admin');
 
   const logs = await prisma.loginLog.findMany({
     orderBy: { createdAt: 'desc' },

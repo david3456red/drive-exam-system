@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
-import { LogOut, Menu, User } from 'lucide-react';
+import { LogOut, Menu, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -15,31 +16,41 @@ const ROLE_DISPLAY: Record<string, string> = {
 };
 
 export function Topbar({
+  title,
+  badge,
   name,
   username,
   roleName,
   onToggleSidebar,
 }: {
+  title: string;
+  badge?: string;
   name: string;
   username: string;
   roleName: string;
-  onToggleSidebar: () => void;
+  onToggleSidebar?: () => void;
 }) {
   const [signingOut, setSigningOut] = useState(false);
 
   return (
-    <header className="h-14 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-30">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="lg:hidden">
-          <Menu className="h-5 w-5" />
-        </Button>
-        <div className="font-semibold text-lg">驾考答题系统</div>
+    <header className="h-14 border-b bg-background flex items-center justify-between px-3 sm:px-4 sticky top-0 z-30">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {onToggleSidebar && (
+          <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="lg:hidden">
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+        <div className="font-semibold text-base sm:text-lg truncate">{title}</div>
+        {badge && (
+          <span className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+            {badge}
+          </span>
+        )}
       </div>
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 text-sm">
-          <User className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2 text-sm">
           <span className="font-medium">{name}</span>
-          <span className="text-muted-foreground">@{username}</span>
+          <span className="text-muted-foreground text-xs">@{username}</span>
           <span
             className={cn(
               'px-2 py-0.5 rounded-full text-xs',
@@ -53,17 +64,28 @@ export function Topbar({
             {ROLE_DISPLAY[roleName] ?? roleName}
           </span>
         </div>
+        <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+          <Link href="/change-password">
+            <KeyRound className="h-4 w-4 mr-1" />
+            修改密码
+          </Link>
+        </Button>
+        <Button asChild variant="ghost" size="icon" className="sm:hidden">
+          <Link href="/change-password" aria-label="修改密码">
+            <KeyRound className="h-4 w-4" />
+          </Link>
+        </Button>
         <Button
           variant="outline"
           size="sm"
           disabled={signingOut}
           onClick={() => {
             setSigningOut(true);
-            signOut({ callbackUrl: '/login' });
+            signOut({ callbackUrl: '/' });
           }}
         >
-          <LogOut className="h-4 w-4 mr-1" />
-          {signingOut ? '退出中...' : '退出'}
+          <LogOut className="h-4 w-4 sm:mr-1" />
+          <span className="hidden sm:inline">{signingOut ? '退出中...' : '退出'}</span>
         </Button>
       </div>
     </header>

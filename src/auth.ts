@@ -151,7 +151,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name ?? user.username,
           roleName: user.role.name,
           permissions,
-          mustChangePassword: user.mustChangePassword,
+          // Field is kept on the user record for analytics, but no longer
+          // enforced anywhere (no forced redirect).
+          mustChangePassword: false,
         };
       },
     }),
