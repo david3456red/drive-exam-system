@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Runtime data
 /data
+
+# Claude Code local settings (machine-local, not for sharing)
+.claude/
