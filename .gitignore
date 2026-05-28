@@ -5,6 +5,7 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+.pnpm-store/
 
 # testing
 /coverage
@@ -15,18 +16,22 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
 *.pem
+*.log
 
 # editor
 .vscode/
+.idea/
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # local env files
 .env*.local
@@ -38,17 +43,19 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-
 # Environment
 .env
 
-# Prisma local database
+# Prisma local databases
 /prisma/*.db
 /prisma/*.db-journal
 /prisma/prisma/
 
-# Runtime data
+# Runtime data (mounted volume in docker-compose)
 /data
+
+# Vitest cache
+.vitest-cache/
 
 # Claude Code local settings (machine-local, not for sharing)
 .claude/

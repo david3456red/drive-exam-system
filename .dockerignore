@@ -1,0 +1,12 @@
+.next
+node_modules
+data
+coverage
+.vitest-cache
+prisma/*.db
+prisma/*.db-journal
+.env
+.env*.local
+.git
+*.log
+*.tsbuildinfo

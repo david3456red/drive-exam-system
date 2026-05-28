@@ -1,0 +1,15 @@
+services:
+  drive-exam-system:
+    build: .
+    container_name: drive-exam-system
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: file:/data/prod.db
+      NEXT_STANDALONE: "true"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data

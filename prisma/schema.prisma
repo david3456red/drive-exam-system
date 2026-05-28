@@ -1,0 +1,205 @@
+// 驾考答题系统 Prisma Schema
+// 数据库:SQLite(单文件,2C2G 部署)
+// 字段语义对齐 design.md §Data Models 与 requirements.md §3..§26
+//
+// 注:SQLite Prisma connector 不支持 enum 类型,故所有枚举字段以 String 存储,
+// 取值范围由应用层 + Zod 校验 + TypeScript 字面量联合类型(见 src/lib/enums.ts)强制。
+// 设计上等价于 design.md 中描述的 enum:
+//   UserStatus    ∈ { ACTIVE, FROZEN, DISABLED }
+//   LoginReason   ∈ { OK, WRONG_PASSWORD, USER_NOT_FOUND, FROZEN_BY_REMOTE, DISABLED, DEVICE_FINGERPRINT_MISSING }
+//   QuestionType  ∈ { SINGLE, MULTI, JUDGE }
+//   ExamMode      ∈ { SEQUENTIAL, RANDOM, CHAPTER, MOCK, WRONG_REVIEW }
+//   ExamStatus    ∈ { ONGOING, FINISHED, ABANDONED }
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ========== RBAC ==========
+
+model User {
+  id                String   @id @default(cuid())
+  username          String   @unique
+  passwordHash      String
+  name              String?
+  roleId            String
+  role              Role     @relation(fields: [roleId], references: [id])
+  /// UserStatus: ACTIVE | FROZEN | DISABLED
+  status            String   @default("ACTIVE")
+  lastLoginIp       String?
+  lastLoginDeviceId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  attempts       ExamAttempt[]
+  wrongQuestions WrongQuestion[]
+  loginLogs      LoginLog[]
+}
+
+model Role {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  strictLogin Boolean @default(false)
+  isSystem    Boolean @default(true)
+
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id    String @id @default(cuid())
+  code  String @unique
+  group String
+  name  String
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ========== 登录日志 ==========
+
+model LoginLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  username  String
+  ip        String
+  deviceId  String?
+  userAgent String?
+  success   Boolean
+  /// LoginReason: OK | WRONG_PASSWORD | USER_NOT_FOUND | FROZEN_BY_REMOTE | DISABLED | DEVICE_FINGERPRINT_MISSING
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ========== 题库 / 分类 / 题目 ==========
+
+model QuestionBank {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  isBuiltin Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  questions Question[]
+  attempts  ExamAttempt[]
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  parentId  String?
+  parent    Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryParent")
+  createdAt DateTime   @default(now())
+
+  questions QuestionCategory[]
+
+  @@unique([parentId, name])
+}
+
+model Question {
+  id          String       @id @default(cuid())
+  bankId      String
+  bank        QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  /// QuestionType: SINGLE | MULTI | JUDGE
+  type        String
+  content     String
+  imageUrl    String?
+  options     String       // JSON: [{ key, text }, ...]
+  answer      String       // 'B' / 'AC' / 'T' / 'F'
+  explanation String?
+  tags        String       // JSON: string[]
+  createdAt   DateTime     @default(now())
+
+  categories QuestionCategory[]
+  records    ExamRecord[]
+  wrongs     WrongQuestion[]
+
+  @@index([bankId, createdAt])
+}
+
+model QuestionCategory {
+  questionId String
+  categoryId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, categoryId])
+}
+
+// ========== 答题会话 ==========
+
+model ExamAttempt {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  bankId        String?
+  bank          QuestionBank? @relation(fields: [bankId], references: [id])
+  /// ExamMode: SEQUENTIAL | RANDOM | CHAPTER | MOCK | WRONG_REVIEW
+  mode          String
+  /// ExamStatus: ONGOING | FINISHED | ABANDONED
+  status        String        @default("ONGOING")
+  questionOrder String        // JSON: string[](快照,会话生命周期不可变)
+  currentIndex  Int           @default(0)
+  categoryIds   String        // JSON: string[](CHAPTER 用;其它模式 "[]")
+  expiresAt     DateTime?     // 仅 MOCK
+  startedAt     DateTime      @default(now())
+  finishedAt    DateTime?
+  totalCount    Int?
+  correctCount  Int?
+  score         Int?
+  durationMs    Int?
+
+  records ExamRecord[]
+
+  @@index([userId, mode, status])
+  @@index([userId, startedAt])
+}
+
+model ExamRecord {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question    @relation(fields: [questionId], references: [id])
+  userAnswer String      // 已 normalize
+  isCorrect  Boolean
+  costMs     Int         // 已 clamp 到 [0, 3_600_000]
+  createdAt  DateTime    @default(now())
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, createdAt])
+}
+
+model WrongQuestion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id])
+  wrongCount  Int      @default(1)
+  rightCount  Int      @default(0)
+  mastered    Boolean  @default(false)
+  lastWrongAt DateTime
+
+  @@unique([userId, questionId])
+  @@index([userId, mastered, lastWrongAt])
+}
