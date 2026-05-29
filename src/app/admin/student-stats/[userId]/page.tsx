@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, ChevronLeft, ChevronRight, UsersRound } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { prisma } from '@/lib/db';
@@ -29,6 +30,7 @@ export default async function StudentDetailPage({ params, searchParams }: Studen
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin/student-stats">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回学员统计
         </Link>
         <h1>{student.name || student.username}</h1>
@@ -64,7 +66,12 @@ export default async function StudentDetailPage({ params, searchParams }: Studen
             ))}
           </tbody>
         </table>
-        {attempts.items.length === 0 ? <div className="empty">暂无数据</div> : null}
+        {attempts.items.length === 0 ? (
+          <div className="empty">
+            <UsersRound size={18} aria-hidden="true" />
+            暂无数据
+          </div>
+        ) : null}
       </section>
       <div className="cluster">
         <span className="muted">
@@ -72,12 +79,14 @@ export default async function StudentDetailPage({ params, searchParams }: Studen
         </span>
         {page > 1 ? (
           <Link className="button" href={`/admin/student-stats/${student.id}?page=${page - 1}`}>
+            <ChevronLeft size={16} aria-hidden="true" />
             上一页
           </Link>
         ) : null}
         {page < totalPages ? (
           <Link className="button" href={`/admin/student-stats/${student.id}?page=${page + 1}`}>
             下一页
+            <ChevronRight size={16} aria-hidden="true" />
           </Link>
         ) : null}
       </div>

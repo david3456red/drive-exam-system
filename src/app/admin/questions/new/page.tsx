@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, ClipboardList, FilePlus2, FolderTree, Image as ImageIcon, Save, Tags } from 'lucide-react';
 
 import { createQuestionAction } from '@/app/admin/actions';
 import { prisma } from '@/lib/db';
@@ -21,6 +22,7 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin/questions">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回题目
         </Link>
         <h1>新建题目</h1>
@@ -31,7 +33,10 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
       <form action={createQuestionAction} className="panel stack">
         <div className="grid">
           <div className="field">
-            <label htmlFor="bankId">题库</label>
+            <label htmlFor="bankId">
+              <ClipboardList size={15} aria-hidden="true" />
+              题库
+            </label>
             <select id="bankId" name="bankId" required>
               <option value="">请选择题库</option>
               {banks.map((bank) => (
@@ -42,7 +47,10 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
             </select>
           </div>
           <div className="field">
-            <label htmlFor="type">题型</label>
+            <label htmlFor="type">
+              <ClipboardList size={15} aria-hidden="true" />
+              题型
+            </label>
             <select id="type" name="type" defaultValue="SINGLE" required>
               {QUESTION_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -52,17 +60,26 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
             </select>
           </div>
           <div className="field">
-            <label htmlFor="answer">答案</label>
+            <label htmlFor="answer">
+              <ClipboardList size={15} aria-hidden="true" />
+              答案
+            </label>
             <input id="answer" name="answer" placeholder="B / AC / T" required />
           </div>
         </div>
 
         <div className="field">
-          <label htmlFor="content">题干</label>
+          <label htmlFor="content">
+            <FilePlus2 size={15} aria-hidden="true" />
+            题干
+          </label>
           <textarea id="content" name="content" required />
         </div>
         <div className="field">
-          <label htmlFor="imageUrl">图片 URL</label>
+          <label htmlFor="imageUrl">
+            <ImageIcon size={15} aria-hidden="true" />
+            图片 URL
+          </label>
           <input id="imageUrl" name="imageUrl" placeholder="https://..." />
         </div>
 
@@ -76,7 +93,10 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
         </section>
 
         <div className="field">
-          <label>分类</label>
+          <label>
+            <FolderTree size={15} aria-hidden="true" />
+            分类
+          </label>
           <div className="cluster">
             {categories.length === 0 ? (
               <span className="muted">暂无分类</span>
@@ -91,15 +111,22 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
         </div>
 
         <div className="field">
-          <label htmlFor="explanation">解析</label>
+          <label htmlFor="explanation">
+            <ClipboardList size={15} aria-hidden="true" />
+            解析
+          </label>
           <textarea id="explanation" name="explanation" />
         </div>
         <div className="field">
-          <label htmlFor="tags">标签</label>
+          <label htmlFor="tags">
+            <Tags size={15} aria-hidden="true" />
+            标签
+          </label>
           <input id="tags" name="tags" placeholder="易错|标志|高速" />
         </div>
 
         <button className="primary" type="submit">
+          <Save size={17} aria-hidden="true" />
           创建题目
         </button>
       </form>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, Save, UserCog } from 'lucide-react';
 import { notFound, redirect } from 'next/navigation';
 
 import { updateRolePermissionsAction } from '@/app/admin/actions';
@@ -30,6 +31,7 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin/roles">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回角色
         </Link>
         <h1>编辑 {role.name}</h1>
@@ -40,7 +42,10 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
         <input type="hidden" name="roleId" value={role.id} />
         {groups.map(([group, items]) => (
           <section className="stack" key={group}>
-            <h2>{group}</h2>
+            <h2>
+              <UserCog size={18} aria-hidden="true" />
+              {group}
+            </h2>
             <div className="grid">
               {items.map((permission) => (
                 <label className="option" key={permission.id}>
@@ -61,6 +66,7 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
           </section>
         ))}
         <button className="primary" type="submit">
+          <Save size={17} aria-hidden="true" />
           保存权限
         </button>
       </form>

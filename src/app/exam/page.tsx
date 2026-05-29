@@ -1,4 +1,16 @@
 import Link from 'next/link';
+import {
+  BookOpenCheck,
+  ClipboardList,
+  FolderTree,
+  Gauge,
+  History,
+  ListChecks,
+  PlayCircle,
+  RotateCcw,
+  Shuffle,
+  Trash2,
+} from 'lucide-react';
 
 import { startSessionAction, abandonAttemptAction, adoptExpiredMockForCurrentUser } from './actions';
 import { prisma } from '@/lib/db';
@@ -7,6 +19,13 @@ import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
 
 const MODES = ['SEQUENTIAL', 'RANDOM', 'CHAPTER', 'MOCK', 'WRONG_REVIEW'] as const;
+const MODE_ICON = {
+  SEQUENTIAL: ListChecks,
+  RANDOM: Shuffle,
+  CHAPTER: FolderTree,
+  MOCK: Gauge,
+  WRONG_REVIEW: ClipboardList,
+} as const;
 
 type ExamPageProps = {
   searchParams?: { error?: string };
@@ -36,16 +55,21 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
   return (
     <main className="page stack">
       <div className="page-title">
-        <span className="badge good">学员前台</span>
+        <span className="badge good">
+          <BookOpenCheck size={15} aria-hidden="true" />
+          学员前台
+        </span>
         <h1>开始练习</h1>
         <p>选择题库和练习模式。进行中的会话会优先恢复，模拟考试离场后会自动兜底结算。</p>
       </div>
       {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
       <div className="cluster">
         <Link className="button" href="/exam/wrong">
+          <ClipboardList size={17} aria-hidden="true" />
           错题本
         </Link>
         <Link className="button" href="/exam/history">
+          <History size={17} aria-hidden="true" />
           答题记录
         </Link>
       </div>
@@ -53,7 +77,10 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
         {banks.map((bank) => (
           <article className="card stack" key={bank.id}>
             <div>
-              <span className="badge">{bank.code}</span>
+              <span className="badge">
+                <BookOpenCheck size={15} aria-hidden="true" />
+                {bank.code}
+              </span>
               <h2>{bank.name}</h2>
               <p className="muted">当前题量：{bank._count.questions}</p>
             </div>
@@ -61,16 +88,19 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
               {MODES.filter((mode) => mode !== 'WRONG_REVIEW').map((mode) => {
                 const attemptId = ongoingKey.get(`${bank.id}:${mode}`);
                 if (mode === 'MOCK' && !canMock) return null;
+                const ModeIcon = MODE_ICON[mode];
                 return (
                   <div className="cluster" key={mode}>
                     {attemptId ? (
                       <>
                         <Link className="button primary" href={`/exam/session/${attemptId}`}>
+                          <RotateCcw size={17} aria-hidden="true" />
                           继续{EXAM_MODE_LABEL[mode]}
                         </Link>
                         <form action={abandonAttemptAction}>
                           <input type="hidden" name="attemptId" value={attemptId} />
                           <button className="ghost" type="submit">
+                            <Trash2 size={17} aria-hidden="true" />
                             放弃
                           </button>
                         </form>
@@ -101,6 +131,7 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
                           </div>
                         ) : null}
                         <button className={mode === 'MOCK' ? 'danger' : 'primary'} type="submit">
+                          <ModeIcon size={17} aria-hidden="true" />
                           {EXAM_MODE_LABEL[mode]}
                         </button>
                       </form>
@@ -113,18 +144,23 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
         ))}
         <article className="card stack">
           <div>
-            <span className="badge warn">错题</span>
+            <span className="badge warn">
+              <ClipboardList size={15} aria-hidden="true" />
+              错题
+            </span>
             <h2>{EXAM_MODE_LABEL.WRONG_REVIEW}</h2>
             <p className="muted">按最近答错时间倒序抽取未掌握错题。</p>
           </div>
           {ongoingKey.get('wrong:WRONG_REVIEW') ? (
             <Link className="button primary" href={`/exam/session/${ongoingKey.get('wrong:WRONG_REVIEW')}`}>
+              <RotateCcw size={17} aria-hidden="true" />
               继续错题重做
             </Link>
           ) : (
             <form action={startSessionAction}>
               <input type="hidden" name="mode" value="WRONG_REVIEW" />
               <button className="primary" type="submit">
+                <PlayCircle size={17} aria-hidden="true" />
                 开始错题重做
               </button>
             </form>

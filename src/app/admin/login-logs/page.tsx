@@ -1,5 +1,14 @@
 import type { Prisma } from '@prisma/client';
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  ShieldCheck,
+  XCircle,
+} from 'lucide-react';
 
 import { prisma } from '@/lib/db';
 import { formatDateTime } from '@/lib/display';
@@ -41,6 +50,7 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回后台
         </Link>
         <h1>登录日志</h1>
@@ -48,7 +58,10 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
       </div>
       <form className="panel grid">
         <div className="field">
-          <label htmlFor="success">结果</label>
+          <label htmlFor="success">
+            <ShieldCheck size={15} aria-hidden="true" />
+            结果
+          </label>
           <select id="success" name="success" defaultValue={success ?? ''}>
             <option value="">全部</option>
             <option value="true">成功</option>
@@ -56,10 +69,14 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="q">关键字</label>
+          <label htmlFor="q">
+            <Search size={15} aria-hidden="true" />
+            关键字
+          </label>
           <input id="q" name="q" defaultValue={q} placeholder="用户名 / IP / 设备" />
         </div>
         <button className="primary" type="submit">
+          <Search size={17} aria-hidden="true" />
           筛选
         </button>
       </form>
@@ -82,6 +99,11 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
                 <td>{log.username}</td>
                 <td>
                   <span className={log.success ? 'badge good' : 'badge bad'}>
+                    {log.success ? (
+                      <CheckCircle2 size={15} aria-hidden="true" />
+                    ) : (
+                      <XCircle size={15} aria-hidden="true" />
+                    )}
                     {log.success ? '成功' : '失败'}
                   </span>
                 </td>
@@ -98,8 +120,18 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
         <span className="muted">
           第 {page} / {totalPages} 页，共 {total} 条
         </span>
-        {page > 1 ? <Link className="button" href={`/admin/login-logs?page=${page - 1}`}>上一页</Link> : null}
-        {page < totalPages ? <Link className="button" href={`/admin/login-logs?page=${page + 1}`}>下一页</Link> : null}
+        {page > 1 ? (
+          <Link className="button" href={`/admin/login-logs?page=${page - 1}`}>
+            <ChevronLeft size={16} aria-hidden="true" />
+            上一页
+          </Link>
+        ) : null}
+        {page < totalPages ? (
+          <Link className="button" href={`/admin/login-logs?page=${page + 1}`}>
+            下一页
+            <ChevronRight size={16} aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
     </main>
   );

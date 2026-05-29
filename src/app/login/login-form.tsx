@@ -1,6 +1,7 @@
 'use client';
 
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { KeyRound, LogIn, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { loginAction } from '@/app/actions/auth';
@@ -39,7 +40,7 @@ export function LoginForm({ title, error, notice }: LoginFormProps) {
   }, []);
 
   return (
-    <form action={loginAction} className="panel stack">
+    <form action={loginAction} className="login-panel stack">
       <div>
         <h1>{title}</h1>
         <p className="muted">请输入账号密码，系统会记录设备用于异地登录风控。</p>
@@ -49,11 +50,17 @@ export function LoginForm({ title, error, notice }: LoginFormProps) {
       {deviceError ? <div className="error">{deviceError}</div> : null}
       <input type="hidden" name="deviceId" value={deviceId} />
       <div className="field">
-        <label htmlFor="username">用户名</label>
+        <label htmlFor="username">
+          <UserRound size={15} aria-hidden="true" />
+          用户名
+        </label>
         <input id="username" name="username" autoComplete="username" required />
       </div>
       <div className="field">
-        <label htmlFor="password">密码</label>
+        <label htmlFor="password">
+          <KeyRound size={15} aria-hidden="true" />
+          密码
+        </label>
         <input
           id="password"
           name="password"
@@ -63,6 +70,7 @@ export function LoginForm({ title, error, notice }: LoginFormProps) {
         />
       </div>
       <button type="submit" className="primary" disabled={!deviceId}>
+        <LogIn size={17} aria-hidden="true" />
         {deviceId ? '登录' : '正在识别设备'}
       </button>
     </form>

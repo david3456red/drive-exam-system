@@ -1,4 +1,13 @@
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Search,
+  XCircle,
+} from 'lucide-react';
 
 import { toggleMasteredAction } from '@/app/exam/actions';
 import { prisma } from '@/lib/db';
@@ -36,6 +45,7 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/exam">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回练习
         </Link>
         <h1>错题本</h1>
@@ -45,7 +55,10 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
 
       <form className="panel grid">
         <div className="field">
-          <label htmlFor="bankId">题库</label>
+          <label htmlFor="bankId">
+            <ClipboardList size={15} aria-hidden="true" />
+            题库
+          </label>
           <select id="bankId" name="bankId" defaultValue={bankId ?? ''}>
             <option value="">全部题库</option>
             {banks.map((bank) => (
@@ -56,7 +69,10 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="masteredFilter">掌握状态</label>
+          <label htmlFor="masteredFilter">
+            <CheckCircle2 size={15} aria-hidden="true" />
+            掌握状态
+          </label>
           <select id="masteredFilter" name="masteredFilter" defaultValue={masteredFilter}>
             <option value="all">全部</option>
             <option value="unmastered">未掌握</option>
@@ -64,6 +80,7 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
           </select>
         </div>
         <button className="primary" type="submit">
+          <Search size={17} aria-hidden="true" />
           筛选
         </button>
       </form>
@@ -73,6 +90,11 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
           <article className="panel stack" key={item.id}>
             <div className="cluster">
               <span className={item.mastered ? 'badge good' : 'badge bad'}>
+                {item.mastered ? (
+                  <CheckCircle2 size={15} aria-hidden="true" />
+                ) : (
+                  <XCircle size={15} aria-hidden="true" />
+                )}
                 {item.mastered ? '已掌握' : '未掌握'}
               </span>
               <span className="badge">{item.bankName}</span>
@@ -86,6 +108,7 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
               <input type="hidden" name="wrongId" value={item.id} />
               <input type="hidden" name="mastered" value={String(!item.mastered)} />
               <button className={item.mastered ? 'ghost' : 'primary'} type="submit">
+                <CheckCircle2 size={16} aria-hidden="true" />
                 {item.mastered ? '取消掌握' : '标记掌握'}
               </button>
             </form>
@@ -98,8 +121,18 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
         <span className="muted">
           第 {page} / {totalPages} 页，共 {wrongs.total} 条
         </span>
-        {page > 1 ? <Link className="button" href={`/exam/wrong?page=${page - 1}`}>上一页</Link> : null}
-        {page < totalPages ? <Link className="button" href={`/exam/wrong?page=${page + 1}`}>下一页</Link> : null}
+        {page > 1 ? (
+          <Link className="button" href={`/exam/wrong?page=${page - 1}`}>
+            <ChevronLeft size={16} aria-hidden="true" />
+            上一页
+          </Link>
+        ) : null}
+        {page < totalPages ? (
+          <Link className="button" href={`/exam/wrong?page=${page + 1}`}>
+            下一页
+            <ChevronRight size={16} aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
     </main>
   );

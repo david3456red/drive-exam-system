@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, CheckCircle2, ClipboardList, Trash2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { deleteQuestionAction } from '@/app/admin/actions';
@@ -31,6 +32,7 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin/questions">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回题目
         </Link>
         <h1>题目详情</h1>
@@ -41,9 +43,18 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
 
       <section className="panel stack">
         <div className="cluster">
-          <span className="badge">{question.bank.name}</span>
-          <span className="badge">{QUESTION_TYPE_LABEL[question.type as QuestionType]}</span>
-          <span className="badge good">答案 {question.answer}</span>
+          <span className="badge">
+            <ClipboardList size={15} aria-hidden="true" />
+            {question.bank.name}
+          </span>
+          <span className="badge">
+            <ClipboardList size={15} aria-hidden="true" />
+            {QUESTION_TYPE_LABEL[question.type as QuestionType]}
+          </span>
+          <span className="badge good">
+            <CheckCircle2 size={15} aria-hidden="true" />
+            答案 {question.answer}
+          </span>
           <span className="badge">答题记录 {question._count.records}</span>
           <span className="badge warn">错题记录 {question._count.wrongs}</span>
         </div>
@@ -79,6 +90,7 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
       <form action={deleteQuestionAction}>
         <input type="hidden" name="id" value={question.id} />
         <button className="danger" disabled={question._count.records + question._count.wrongs > 0} type="submit">
+          <Trash2 size={17} aria-hidden="true" />
           删除题目
         </button>
       </form>

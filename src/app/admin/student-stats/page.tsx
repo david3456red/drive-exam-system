@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, UsersRound } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
 import { formatDateTime } from '@/lib/display';
@@ -19,6 +20,7 @@ export default async function StudentStatsPage({ searchParams }: StudentStatsPag
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回后台
         </Link>
         <h1>学员统计</h1>
@@ -44,6 +46,7 @@ export default async function StudentStatsPage({ searchParams }: StudentStatsPag
                 <td>{formatDateTime(student.lastPracticedAt)}</td>
                 <td>
                   <Link className="button" href={`/admin/student-stats/${student.id}`}>
+                    <Eye size={16} aria-hidden="true" />
                     详情
                   </Link>
                 </td>
@@ -51,14 +54,29 @@ export default async function StudentStatsPage({ searchParams }: StudentStatsPag
             ))}
           </tbody>
         </table>
-        {students.items.length === 0 ? <div className="empty">暂无数据</div> : null}
+        {students.items.length === 0 ? (
+          <div className="empty">
+            <UsersRound size={18} aria-hidden="true" />
+            暂无数据
+          </div>
+        ) : null}
       </section>
       <div className="cluster">
         <span className="muted">
           第 {page} / {totalPages} 页，共 {students.total} 名学员
         </span>
-        {page > 1 ? <Link className="button" href={`/admin/student-stats?page=${page - 1}`}>上一页</Link> : null}
-        {page < totalPages ? <Link className="button" href={`/admin/student-stats?page=${page + 1}`}>下一页</Link> : null}
+        {page > 1 ? (
+          <Link className="button" href={`/admin/student-stats?page=${page - 1}`}>
+            <ChevronLeft size={16} aria-hidden="true" />
+            上一页
+          </Link>
+        ) : null}
+        {page < totalPages ? (
+          <Link className="button" href={`/admin/student-stats?page=${page + 1}`}>
+            下一页
+            <ChevronRight size={16} aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
     </main>
   );

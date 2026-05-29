@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, History } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
 import { EXAM_MODE_LABEL, EXAM_STATUS_LABEL, formatDateTime, formatDuration } from '@/lib/display';
@@ -19,6 +20,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/exam">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回练习
         </Link>
         <h1>答题记录</h1>
@@ -50,6 +52,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                 </td>
                 <td>
                   <Link className="button" href={`/exam/history/${attempt.id}`}>
+                    <Eye size={16} aria-hidden="true" />
                     详情
                   </Link>
                 </td>
@@ -57,14 +60,29 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
             ))}
           </tbody>
         </table>
-        {attempts.items.length === 0 ? <div className="empty">暂无答题记录</div> : null}
+        {attempts.items.length === 0 ? (
+          <div className="empty">
+            <History size={18} aria-hidden="true" />
+            暂无答题记录
+          </div>
+        ) : null}
       </section>
       <div className="cluster">
         <span className="muted">
           第 {page} / {totalPages} 页，共 {attempts.total} 条
         </span>
-        {page > 1 ? <Link className="button" href={`/exam/history?page=${page - 1}`}>上一页</Link> : null}
-        {page < totalPages ? <Link className="button" href={`/exam/history?page=${page + 1}`}>下一页</Link> : null}
+        {page > 1 ? (
+          <Link className="button" href={`/exam/history?page=${page - 1}`}>
+            <ChevronLeft size={16} aria-hidden="true" />
+            上一页
+          </Link>
+        ) : null}
+        {page < totalPages ? (
+          <Link className="button" href={`/exam/history?page=${page + 1}`}>
+            下一页
+            <ChevronRight size={16} aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
     </main>
   );

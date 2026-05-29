@@ -59,3 +59,6 @@ next-env.d.ts
 
 # Claude Code local settings (machine-local, not for sharing)
 .claude/
+
+# Local visual review artifacts
+.superpowers/
