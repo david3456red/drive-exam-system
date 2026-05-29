@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, Edit3, LockKeyhole, UserCog } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
 import { requireUser } from '@/lib/server-session';
@@ -21,6 +22,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回后台
         </Link>
         <h1>角色权限</h1>
@@ -51,10 +53,18 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                 <td>
                   {canEdit && role.code !== 'super_admin' ? (
                     <Link className="button primary" href={`/admin/roles/${role.id}/edit`}>
+                      <Edit3 size={16} aria-hidden="true" />
                       编辑权限
                     </Link>
                   ) : (
-                    <span className="badge">只读</span>
+                    <span className="badge">
+                      {role.code === 'super_admin' ? (
+                        <LockKeyhole size={15} aria-hidden="true" />
+                      ) : (
+                        <UserCog size={15} aria-hidden="true" />
+                      )}
+                      只读
+                    </span>
                   )}
                 </td>
               </tr>

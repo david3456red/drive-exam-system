@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, CheckCircle2, Hash, XCircle } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { prisma } from '@/lib/db';
@@ -25,6 +26,7 @@ export default async function HistoryDetailPage({ params }: HistoryDetailPagePro
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/exam/history">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回记录
         </Link>
         <h1>记录详情</h1>
@@ -46,9 +48,17 @@ export default async function HistoryDetailPage({ params }: HistoryDetailPagePro
           <article className="panel stack" key={record.id}>
             <div className="cluster">
               <span className={record.isCorrect ? 'badge good' : 'badge bad'}>
+                {record.isCorrect ? (
+                  <CheckCircle2 size={15} aria-hidden="true" />
+                ) : (
+                  <XCircle size={15} aria-hidden="true" />
+                )}
                 {record.isCorrect ? '正确' : '错误'}
               </span>
-              <span className="badge">第 {index + 1} 题</span>
+              <span className="badge">
+                <Hash size={15} aria-hidden="true" />
+                第 {index + 1} 题
+              </span>
             </div>
             <h2>{record.question.content}</h2>
             <p>

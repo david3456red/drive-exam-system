@@ -1,5 +1,6 @@
 'use client';
 
+import { Download, FileSpreadsheet, FileText, Inbox, Save, Search, Upload } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
 
 import type { CommitResult, PreviewResult } from '@/lib/import/types';
@@ -82,7 +83,10 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
 
       <div className="grid">
         <div className="field">
-          <label htmlFor="bankId">导入到题库</label>
+          <label htmlFor="bankId">
+            <Inbox size={15} aria-hidden="true" />
+            导入到题库
+          </label>
           <select id="bankId" value={bankId} onChange={(event) => setBankId(event.target.value)}>
             {banks.map((bank) => (
               <option key={bank.id} value={bank.id}>
@@ -92,7 +96,10 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="sourceKind">来源</label>
+          <label htmlFor="sourceKind">
+            <Upload size={15} aria-hidden="true" />
+            来源
+          </label>
           <select
             id="sourceKind"
             value={sourceKind}
@@ -110,7 +117,10 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
 
       {sourceKind === 'json' ? (
         <div className="field">
-          <label htmlFor="jsonPayload">JSON 内容</label>
+          <label htmlFor="jsonPayload">
+            <FileText size={15} aria-hidden="true" />
+            JSON 内容
+          </label>
           <textarea
             id="jsonPayload"
             value={jsonPayload}
@@ -123,7 +133,10 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
         </div>
       ) : (
         <div className="field">
-          <label htmlFor="excelFile">Excel 文件</label>
+          <label htmlFor="excelFile">
+            <FileSpreadsheet size={15} aria-hidden="true" />
+            Excel 文件
+          </label>
           <input
             id="excelFile"
             type="file"
@@ -141,12 +154,15 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
           disabled={isPending || (sourceKind === 'json' ? !jsonPayload.trim() : excelBytes.length === 0)}
           onClick={onPreview}
         >
+          <Search size={17} aria-hidden="true" />
           预览
         </button>
         <button type="button" disabled={isPending || !canCommit} onClick={onCommit}>
+          <Save size={17} aria-hidden="true" />
           确认导入
         </button>
         <a className="button" href="/admin/questions/import/template">
+          <Download size={17} aria-hidden="true" />
           下载模板
         </a>
       </div>

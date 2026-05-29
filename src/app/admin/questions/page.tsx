@@ -1,5 +1,16 @@
 import type { Prisma } from '@prisma/client';
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Eye,
+  FilePlus2,
+  FolderTree,
+  Search,
+  Upload,
+} from 'lucide-react';
 
 import { prisma } from '@/lib/db';
 import { QUESTION_TYPES, type QuestionType } from '@/lib/enums';
@@ -45,6 +56,7 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回后台
         </Link>
         <h1>题目管理</h1>
@@ -56,18 +68,24 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
       <section className="panel stack">
         <div className="cluster">
           <Link className="button primary" href="/admin/questions/new">
+            <FilePlus2 size={17} aria-hidden="true" />
             新建题目
           </Link>
           <Link className="button" href="/admin/questions/import">
+            <Upload size={17} aria-hidden="true" />
             批量导入
           </Link>
           <Link className="button" href="/admin/categories">
+            <FolderTree size={17} aria-hidden="true" />
             分类管理
           </Link>
         </div>
         <form className="grid">
           <div className="field">
-            <label htmlFor="bankId">题库</label>
+            <label htmlFor="bankId">
+              <ClipboardList size={15} aria-hidden="true" />
+              题库
+            </label>
             <select id="bankId" name="bankId" defaultValue={bankId ?? ''}>
               <option value="">全部题库</option>
               {banks.map((bank) => (
@@ -78,7 +96,10 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
             </select>
           </div>
           <div className="field">
-            <label htmlFor="type">题型</label>
+            <label htmlFor="type">
+              <ClipboardList size={15} aria-hidden="true" />
+              题型
+            </label>
             <select id="type" name="type" defaultValue={type ?? ''}>
               <option value="">全部题型</option>
               {QUESTION_TYPES.map((item) => (
@@ -89,10 +110,14 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
             </select>
           </div>
           <div className="field">
-            <label htmlFor="q">关键字</label>
+            <label htmlFor="q">
+              <Search size={15} aria-hidden="true" />
+              关键字
+            </label>
             <input id="q" name="q" defaultValue={q} placeholder="题干关键字" />
           </div>
           <button className="primary" type="submit">
+            <Search size={17} aria-hidden="true" />
             筛选
           </button>
         </form>
@@ -124,6 +149,7 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
                 <td>{formatDateTime(question.createdAt)}</td>
                 <td>
                   <Link className="button" href={`/admin/questions/${question.id}`}>
+                    <Eye size={16} aria-hidden="true" />
                     详情
                   </Link>
                 </td>
@@ -146,8 +172,18 @@ function Pagination({ page, total }: { page: number; total: number }) {
       <span className="muted">
         第 {page} / {totalPages} 页，共 {total} 题
       </span>
-      {page > 1 ? <Link className="button" href={`/admin/questions?page=${page - 1}`}>上一页</Link> : null}
-      {page < totalPages ? <Link className="button" href={`/admin/questions?page=${page + 1}`}>下一页</Link> : null}
+      {page > 1 ? (
+        <Link className="button" href={`/admin/questions?page=${page - 1}`}>
+          <ChevronLeft size={16} aria-hidden="true" />
+          上一页
+        </Link>
+      ) : null}
+      {page < totalPages ? (
+        <Link className="button" href={`/admin/questions?page=${page + 1}`}>
+          下一页
+          <ChevronRight size={16} aria-hidden="true" />
+        </Link>
+      ) : null}
     </div>
   );
 }

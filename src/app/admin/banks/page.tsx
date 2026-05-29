@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, BookMarked, Eye, Save, Trash2 } from 'lucide-react';
 
 import { createBankAction, deleteBankAction } from '@/app/admin/actions';
 import { prisma } from '@/lib/db';
@@ -25,14 +26,21 @@ export default async function BanksPage({ searchParams }: BanksPageProps) {
         <h2>新建或更新题库</h2>
         <form action={createBankAction} className="grid">
           <div className="field">
-            <label htmlFor="code">题库编码</label>
+            <label htmlFor="code">
+              <BookMarked size={15} aria-hidden="true" />
+              题库编码
+            </label>
             <input id="code" name="code" placeholder="subject_1" required />
           </div>
           <div className="field">
-            <label htmlFor="name">题库名称</label>
+            <label htmlFor="name">
+              <BookMarked size={15} aria-hidden="true" />
+              题库名称
+            </label>
             <input id="name" name="name" placeholder="科目一" required />
           </div>
           <button className="primary" type="submit">
+            <Save size={17} aria-hidden="true" />
             保存题库
           </button>
         </form>
@@ -63,6 +71,7 @@ export default async function BanksPage({ searchParams }: BanksPageProps) {
                   <td>
                     <div className="cluster">
                       <Link className="button" href={`/admin/questions?bankId=${bank.id}`}>
+                        <Eye size={16} aria-hidden="true" />
                         查看题目
                       </Link>
                       <form action={deleteBankAction}>
@@ -73,6 +82,7 @@ export default async function BanksPage({ searchParams }: BanksPageProps) {
                           title={locked ? '内置题库或已有题目时不可删除' : '删除题库'}
                           type="submit"
                         >
+                          <Trash2 size={16} aria-hidden="true" />
                           删除
                         </button>
                       </form>
@@ -92,6 +102,7 @@ function Header({ title }: { title: string }) {
   return (
     <div className="page-title">
       <Link className="button" href="/admin">
+        <ArrowLeft size={17} aria-hidden="true" />
         返回后台
       </Link>
       <h1>{title}</h1>

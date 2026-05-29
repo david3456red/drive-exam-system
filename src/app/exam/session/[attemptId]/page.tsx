@@ -1,4 +1,14 @@
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ClipboardCheck,
+  Flag,
+  Hash,
+  Send,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
 import { notFound, redirect } from 'next/navigation';
 
 import {
@@ -64,10 +74,15 @@ export default async function SessionPage({
     <main className="page stack">
       <div className="cluster">
         <Link className="button" href="/exam">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回练习
         </Link>
-        <span className="badge">{EXAM_MODE_LABEL[attempt.mode as keyof typeof EXAM_MODE_LABEL]}</span>
         <span className="badge">
+          <ClipboardCheck size={15} aria-hidden="true" />
+          {EXAM_MODE_LABEL[attempt.mode as keyof typeof EXAM_MODE_LABEL]}
+        </span>
+        <span className="badge">
+          <Hash size={15} aria-hidden="true" />
           第 {Math.min(attempt.currentIndex + 1, order.length)} / {order.length} 题
         </span>
         {attempt.mode === 'MOCK' && attempt.expiresAt ? (
@@ -81,6 +96,11 @@ export default async function SessionPage({
         <section className={`panel stack ${feedback.isCorrect ? '' : ''}`}>
           <div className="cluster">
             <span className={feedback.isCorrect ? 'badge good' : 'badge bad'}>
+              {feedback.isCorrect ? (
+                <CheckCircle2 size={15} aria-hidden="true" />
+              ) : (
+                <XCircle size={15} aria-hidden="true" />
+              )}
               {feedback.isCorrect ? '回答正确' : '回答错误'}
             </span>
             <strong>{feedback.question.content}</strong>
@@ -115,7 +135,10 @@ export default async function SessionPage({
 
       <section className="question panel stack">
         <div className="cluster">
-          <span className="badge">{QUESTION_TYPE_LABEL[question.type as keyof typeof QUESTION_TYPE_LABEL]}</span>
+          <span className="badge">
+            <ClipboardCheck size={15} aria-hidden="true" />
+            {QUESTION_TYPE_LABEL[question.type as keyof typeof QUESTION_TYPE_LABEL]}
+          </span>
           <span className="muted">题号 {question.id.slice(-6)}</span>
         </div>
         <h1>{question.content}</h1>
@@ -137,6 +160,7 @@ export default async function SessionPage({
             </label>
           ))}
           <button type="submit" className="primary">
+            <Send size={17} aria-hidden="true" />
             提交答案
           </button>
         </form>
@@ -146,12 +170,14 @@ export default async function SessionPage({
         <form action={finishAttemptAction}>
           <input type="hidden" name="attemptId" value={attempt.id} />
           <button className="primary" type="submit">
+            <Flag size={17} aria-hidden="true" />
             交卷
           </button>
         </form>
         <form action={abandonAttemptAction}>
           <input type="hidden" name="attemptId" value={attempt.id} />
           <button className="danger" type="submit">
+            <Trash2 size={17} aria-hidden="true" />
             放弃本次练习
           </button>
         </form>

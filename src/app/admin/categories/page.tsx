@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeft, FolderTree, Save, Trash2 } from 'lucide-react';
 
 import { createCategoryAction, deleteCategoryAction } from '@/app/admin/actions';
 import { prisma } from '@/lib/db';
@@ -20,6 +21,7 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
     <main className="page stack">
       <div className="page-title">
         <Link className="button" href="/admin">
+          <ArrowLeft size={17} aria-hidden="true" />
           返回后台
         </Link>
         <h1>分类管理</h1>
@@ -32,11 +34,17 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
         <h2>新建分类</h2>
         <form action={createCategoryAction} className="grid">
           <div className="field">
-            <label htmlFor="name">分类名称</label>
+            <label htmlFor="name">
+              <FolderTree size={15} aria-hidden="true" />
+              分类名称
+            </label>
             <input id="name" name="name" required />
           </div>
           <div className="field">
-            <label htmlFor="parentId">上级分类</label>
+            <label htmlFor="parentId">
+              <FolderTree size={15} aria-hidden="true" />
+              上级分类
+            </label>
             <select id="parentId" name="parentId">
               <option value="">顶级分类</option>
               {categories.map((category) => (
@@ -47,6 +55,7 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
             </select>
           </div>
           <button className="primary" type="submit">
+            <Save size={17} aria-hidden="true" />
             创建分类
           </button>
         </form>
@@ -79,6 +88,7 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
                       title={category._count.children > 0 ? '请先删除子分类' : '删除分类'}
                       type="submit"
                     >
+                      <Trash2 size={16} aria-hidden="true" />
                       删除
                     </button>
                   </form>
