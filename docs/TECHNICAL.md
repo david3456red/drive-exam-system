@@ -40,6 +40,7 @@ src/
     exam-engine/              # 答题引擎、快照、错题状态机、分页查询
     import/                   # JSON/Excel 导入流水线
     auth-pipeline.ts          # 登录决策流水线
+    admin-user-policy.ts      # 后台用户管理策略
     db.ts                     # Prisma Client 单例
     display.ts                # UI 展示格式化
     enums.ts                  # 枚举事实来源
@@ -104,6 +105,14 @@ SQLite 不支持 Prisma enum，枚举字段统一以 `String` 存储，合法取
 - 写入 `LoginLog`。
 - 返回会话所需的用户与权限码。
 
+### 后台用户策略
+
+`src/lib/admin-user-policy.ts` 封装用户管理的跨页面策略：
+
+- `canAssignRole`：只有 `super_admin` 可以把新用户分配为 `super_admin`。
+- `canManageUserRole`：只有 `super_admin` 可以修改超级管理员账号状态或重置其密码。
+- `buildStatusUpdateData`：冻结用户恢复为 `ACTIVE` 时，同时清空 `lastLoginIp` 和 `lastLoginDeviceId`，让严格登录用户重新建立登录基线。
+
 ## 答题引擎
 
 ### 纯函数模块
@@ -111,6 +120,7 @@ SQLite 不支持 Prisma enum，枚举字段统一以 `String` 存储，合法取
 | 文件 | 职责 |
 | --- | --- |
 | `judger.ts` | 答案规范化、比对、是否可提交、耗时钳制 |
+| `submission-guard.ts` | 校验提交题目是否属于当前会话快照 |
 | `wrongbook.ts` | 错题本状态机 |
 | `snapshot.ts` | `questionOrder` / `categoryIds` JSON 序列化 |
 | `mock-config.ts` | 模考题量、时长、通过线配置 |
@@ -128,11 +138,13 @@ SQLite 不支持 Prisma enum，枚举字段统一以 `String` 存储，合法取
 
 1. `startSessionAction` 创建或恢复进行中会话。
 2. 创建会话时写入 `questionOrder`、`categoryIds`、`expiresAt`。
-3. `submitAnswerAction` 写入 `ExamRecord`，更新错题本，推进 `currentIndex`。
-4. `finishAttemptAction` / `abandonAttemptAction` 调用 `finalizeAttempt`。
-5. `finalizeAttempt` 按 `questionOrder.length` 计算总题数，只统计快照内正确记录，避免分数超过 100。
-6. 模考结算时为未答题补齐空 `ExamRecord`。
-7. `/api/exam/abandon` 接收浏览器关闭时的 `sendBeacon`。
+3. `submitAnswerAction` 先用 `resolveSubmittedQuestion` 确认提交题目属于 `questionOrder` 快照。
+4. 通过校验后写入 `ExamRecord`，更新错题本，按快照位置推进 `currentIndex`。
+5. `CostInput` 在表单提交时写入本题耗时，服务端 `clampCostMs` 将耗时限制在 `[0, 3_600_000]`。
+6. `finishAttemptAction` / `abandonAttemptAction` 调用 `finalizeAttempt`。
+7. `finalizeAttempt` 按 `questionOrder.length` 计算总题数，只统计快照内正确记录，避免分数超过 100。
+8. 模考结算时为未答题补齐空 `ExamRecord`。
+9. `/api/exam/abandon` 接收浏览器关闭时的 `sendBeacon`；`MockEffects` 会在正常表单提交期间短暂抑制该 beacon，避免提交跳转被误判为放弃。
 
 ## 导入流水线
 
@@ -173,7 +185,11 @@ pnpm test
 覆盖：
 
 - 引擎层属性测试。
+- 答题提交快照校验。
+- 答题耗时输入和模考关闭页副作用。
 - 权限属性测试。
+- 后台用户管理策略。
+- 生产环境 `AUTH_SECRET` 强校验。
 - 题型校验属性测试。
 - 导入解析/预览属性测试。
 - UI 组件测试。
@@ -204,6 +220,8 @@ pnpm build
 
 ## 本地运行
 
+要求 Node.js 20+，包管理器使用 `pnpm@9.15.4`。
+
 ```bash
 pnpm install
 copy .env.example .env
@@ -218,6 +236,17 @@ pnpm dev
 - 学员登录：`http://localhost:3000/login`
 - 后台登录：`http://localhost:3000/admin/login`
 
+## 环境变量
+
+| 变量 | 用途 | 默认/说明 |
+| --- | --- | --- |
+| `DATABASE_URL` | Prisma 数据库连接 | 本地示例为 `file:./prisma/dev.db`；Docker 中为 `file:/data/prod.db` |
+| `AUTH_SECRET` | 签名 Cookie 会话密钥 | 生产环境必须设置为非占位强随机值 |
+| `INITIAL_ADMIN_USERNAME` | 初始超级管理员用户名 | 默认 `admin` |
+| `INITIAL_ADMIN_PASSWORD` | 初始超级管理员首次创建密码 | 默认 `Admin@123`；seed 的 update 分支不会重置已存在账号密码 |
+| `SEED_DEMO_USERS` | 是否写入演示学员和教练 | 设为 `false` 可跳过 |
+| `NEXT_STANDALONE` | 是否启用 Next standalone 输出 | Docker 构建/运行使用 `true`，Windows 本地默认不启用 |
+
 ## Docker 部署
 
 ```bash
@@ -227,7 +256,7 @@ docker compose up -d --build
 
 生产前必须修改：
 
-- `AUTH_SECRET`
+- `AUTH_SECRET`，必须是非占位强随机值；生产环境缺失或仍为示例占位值时，会拒绝签发/校验登录会话。
 - 初始管理员密码或首次登录后立即改密
 - 是否保留 `SEED_DEMO_USERS`
 

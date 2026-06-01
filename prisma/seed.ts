@@ -303,7 +303,7 @@ async function main() {
   console.log(`[seed] upsert 初始管理员账号 username=${adminUsername} ...`);
 
   const adminRole = await prisma.role.findUniqueOrThrow({
-    where: { code: 'admin' },
+    where: { code: 'super_admin' },
   });
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 

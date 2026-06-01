@@ -4,6 +4,11 @@ import * as bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import {
+  buildStatusUpdateData,
+  canAssignRole,
+  canManageUserRole,
+} from '@/lib/admin-user-policy';
 import { prisma } from '@/lib/db';
 import { QUESTION_TYPES, USER_STATUSES, type QuestionType, type UserStatus } from '@/lib/enums';
 import { JUDGE_OPTIONS, validateQuestionPayload } from '@/lib/question-validate';
@@ -52,6 +57,8 @@ export async function createCategoryAction(formData: FormData): Promise<void> {
   if (!name) redirect('/admin/categories?error=请填写分类名称');
 
   try {
+    const existing = await prisma.category.findFirst({ where: { name, parentId } });
+    if (existing) redirect('/admin/categories?error=同级分类名重复');
     await prisma.category.create({ data: { name, parentId } });
   } catch {
     redirect('/admin/categories?error=同级分类名重复');
@@ -171,12 +178,21 @@ export async function updateRolePermissionsAction(formData: FormData): Promise<v
 }
 
 export async function createUserAction(formData: FormData): Promise<void> {
-  requireUser('user:write');
+  const actor = requireUser('user:write');
   const username = text(formData, 'username');
   const name = nullableText(formData, 'name');
   const roleId = text(formData, 'roleId');
   const password = text(formData, 'password') || 'User@123456';
   if (!username || !roleId) redirect('/admin/users?error=请填写用户名和角色');
+
+  const role = await prisma.role.findUnique({
+    where: { id: roleId },
+    select: { code: true },
+  });
+  if (!role) redirect('/admin/users?error=角色无效');
+  if (!canAssignRole({ actorRoleCode: actor.roleCode, targetRoleCode: role.code })) {
+    redirect('/admin/users?error=只有超级管理员可创建超级管理员账号');
+  }
 
   try {
     await prisma.user.create({
@@ -197,24 +213,45 @@ export async function createUserAction(formData: FormData): Promise<void> {
 }
 
 export async function setUserStatusAction(formData: FormData): Promise<void> {
-  requireUser('user:unfreeze');
+  const actor = requireUser('user:unfreeze');
   const id = text(formData, 'id');
   const status = readUserStatus(text(formData, 'status'));
   if (!status) redirect('/admin/users?error=状态不合法');
 
-  await prisma.user.update({ where: { id }, data: { status } });
+  const target = await prisma.user.findUnique({
+    where: { id },
+    include: { role: { select: { code: true } } },
+  });
+  if (!target) redirect('/admin/users?error=用户不存在');
+  if (!canManageUserRole({ actorRoleCode: actor.roleCode, targetRoleCode: target.role.code })) {
+    redirect('/admin/users?error=只有超级管理员可管理超级管理员账号');
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: buildStatusUpdateData(target.status, status),
+  });
   revalidatePath('/admin/users');
   redirect('/admin/users?notice=用户状态已更新');
 }
 
 export async function resetUserPasswordAction(formData: FormData): Promise<void> {
-  requireUser('user:reset-password');
+  const actor = requireUser('user:reset-password');
   const id = text(formData, 'id');
   const password = text(formData, 'password') || 'User@123456';
+  const target = await prisma.user.findUnique({
+    where: { id },
+    include: { role: { select: { code: true } } },
+  });
+  if (!target) redirect('/admin/users?error=用户不存在');
+  if (!canManageUserRole({ actorRoleCode: actor.roleCode, targetRoleCode: target.role.code })) {
+    redirect('/admin/users?error=只有超级管理员可管理超级管理员账号');
+  }
   await prisma.user.update({
     where: { id },
     data: { passwordHash: await bcrypt.hash(password, 10) },
   });
+  revalidatePath('/admin/users');
   redirect('/admin/users?notice=密码已重置');
 }
 

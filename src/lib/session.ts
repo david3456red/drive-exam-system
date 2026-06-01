@@ -55,10 +55,19 @@ export function verifySessionToken(
 }
 
 export function getSessionSecret(): string {
-  return (
-    process.env.AUTH_SECRET ||
-    'development-only-drive-exam-session-secret-change-me'
-  );
+  const secret = process.env.AUTH_SECRET?.trim();
+  if (process.env.NODE_ENV === 'production') {
+    if (
+      !secret ||
+      secret === 'replace-with-openssl-rand-base64-32' ||
+      secret === 'build-time-placeholder'
+    ) {
+      throw new Error('AUTH_SECRET must be set to a strong non-placeholder value in production');
+    }
+    return secret;
+  }
+
+  return secret || 'development-only-drive-exam-session-secret-change-me';
 }
 
 function sign(body: string, secret: string): string {

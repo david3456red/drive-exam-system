@@ -25,6 +25,7 @@ import {
 import { parseOrder } from '@/lib/exam-engine/snapshot';
 import { requireUser } from '@/lib/server-session';
 import { MockEffects } from './mock-effects';
+import { CostInput } from './cost-input';
 import { QuestionImage } from './question-image';
 
 type SessionPageProps = {
@@ -146,7 +147,7 @@ export default async function SessionPage({
         <form action={submitAnswerAction} className="stack">
           <input type="hidden" name="attemptId" value={attempt.id} />
           <input type="hidden" name="questionId" value={question.id} />
-          <input type="hidden" name="costMs" value="0" />
+          <CostInput />
           {options.map((option) => (
             <label className="option" key={option.key}>
               <input

@@ -9,6 +9,7 @@ import { compareAnswer, normalizeAnswer, clampCostMs } from '@/lib/exam-engine/j
 import { loadQuestionsForMode } from '@/lib/exam-engine/question-loader';
 import { applyExamResult } from '@/lib/exam-engine/wrongbook';
 import { getMockConfig } from '@/lib/exam-engine/mock-config';
+import { resolveSubmittedQuestion } from '@/lib/exam-engine/submission-guard';
 import { parseOrder, serializeCategoryIds, serializeOrder } from '@/lib/exam-engine/snapshot';
 import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
@@ -105,6 +106,12 @@ export async function submitAnswerAction(formData: FormData): Promise<void> {
     redirect(`/exam/session/${attempt.id}/result`);
   }
 
+  const order = parseOrder(attempt.questionOrder);
+  const submittedQuestion = resolveSubmittedQuestion(order, questionId);
+  if (!submittedQuestion.ok) {
+    redirect(`/exam/session/${attempt.id}?error=题目不属于本次会话`);
+  }
+
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) redirect(`/exam/session/${attempt.id}`);
 
@@ -154,17 +161,14 @@ export async function submitAnswerAction(formData: FormData): Promise<void> {
       });
     }
 
-    const order = parseOrder(attempt.questionOrder);
-    const index = order.indexOf(questionId);
-    const nextIndex = index < 0 ? attempt.currentIndex + 1 : index + 1;
+    const nextIndex = submittedQuestion.index + 1;
     await tx.examAttempt.update({
       where: { id: attempt.id },
       data: { currentIndex: Math.min(nextIndex, Math.max(order.length - 1, 0)) },
     });
   });
 
-  const order = parseOrder(attempt.questionOrder);
-  const isLast = order.indexOf(questionId) >= order.length - 1;
+  const isLast = submittedQuestion.index >= order.length - 1;
   if (isLast) {
     await finalizeAttempt(attempt.id, user.id, 'FINISHED');
     redirect(`/exam/session/${attempt.id}/result`);
@@ -190,7 +194,7 @@ export async function abandonAttemptAction(formData: FormData): Promise<void> {
 }
 
 export async function toggleMasteredAction(formData: FormData): Promise<void> {
-  const user = requireUser('exam:practice');
+  const user = requireUser('wrong:manage');
   const wrongId = String(formData.get('wrongId') ?? '');
   const mastered = String(formData.get('mastered') ?? '') === 'true';
 

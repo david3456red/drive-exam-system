@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type MockEffectsProps = {
   attemptId: string;
@@ -8,6 +8,8 @@ type MockEffectsProps = {
 };
 
 export function MockEffects({ attemptId, expiresAt }: MockEffectsProps) {
+  const suppressUnloadBeaconRef = useRef(false);
+  const resetTimerRef = useRef<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(() =>
     Math.max(0, new Date(expiresAt).getTime() - Date.now()),
   );
@@ -28,15 +30,32 @@ export function MockEffects({ attemptId, expiresAt }: MockEffectsProps) {
       }
     }, 1000);
 
+    const onSubmit = () => {
+      suppressUnloadBeaconRef.current = true;
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+      resetTimerRef.current = window.setTimeout(() => {
+        suppressUnloadBeaconRef.current = false;
+        resetTimerRef.current = null;
+      }, 5000);
+    };
+
     const onBeforeUnload = () => {
+      if (suppressUnloadBeaconRef.current) return;
       navigator.sendBeacon(
         '/api/exam/abandon',
         JSON.stringify({ attemptId }),
       );
     };
+    document.addEventListener('submit', onSubmit, true);
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => {
       window.clearInterval(tick);
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+      document.removeEventListener('submit', onSubmit, true);
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, [attemptId, expiresAt]);

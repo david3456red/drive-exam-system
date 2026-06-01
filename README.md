@@ -1,6 +1,6 @@
 # 驾考答题系统
 
-轻量可部署的驾考练习与后台题库管理系统。当前实现面向 2C2G 单机服务器：Next.js 14 App Router、Server Actions、Prisma、SQLite、原生 CSS、签名 Cookie 会话。
+轻量可部署的驾考练习与后台题库管理系统。当前实现面向 2C2G 单机服务器：Next.js 14 App Router、Server Actions、Prisma、SQLite、原生 CSS、签名 Cookie 会话和 RBAC 权限控制。
 
 ## 文档入口
 
@@ -11,13 +11,24 @@
 
 `pnpm db:seed` 会写入：
 
-- 管理员：`admin / Admin@123`
+- 超级管理员：`admin / Admin@123`
 - 演示学员：`student / Student@123`
 - 演示教练：`teacher / Teacher@123`
 
 生产环境建议首次登录后立即修改密码。设置 `SEED_DEMO_USERS=false` 可跳过演示账号。
+生产环境必须设置非占位的 `AUTH_SECRET`，否则系统会拒绝签发/校验登录会话。
+
+## 当前实现要点
+
+- 种子数据内置 `super_admin`、`admin`、`teacher`、`student_strict`、`student_normal` 5 个角色和 30 个权限点。
+- `super_admin` 拥有全部权限；非超级管理员不能创建、修改状态或重置超级管理员账号。
+- 学员端支持顺序、随机、章节、模拟考试和错题重做；答题会话使用固定题目快照，提交时会拒绝不属于当前会话的题目。
+- 答题页会记录本题耗时，服务端会钳制异常耗时；模拟考试关闭页面时会兜底放弃，正常提交表单不会触发误放弃。
+- 严格登录角色会在异地或设备指纹变化时被冻结；后台解冻为 `ACTIVE` 时会清除原登录 IP/设备基线。
 
 ## 本地开发
+
+要求 Node.js 20+，包管理器使用 `pnpm@9.15.4`。
 
 ```bash
 pnpm install
@@ -70,6 +81,7 @@ SQLite 数据库位于 `./data/prod.db`。备份时停止容器或确保无写�
 - 科目一：100 道示例题
 - 科目四：50 道示例题
 - 4 个章节分类
+- 5 个内置角色与 30 个权限点
 
 这些题目用于跑通系统流程，正式运营请通过后台录入或导入真实题库。
 

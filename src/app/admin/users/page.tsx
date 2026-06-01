@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, KeyRound, Save, UserCog, UserRound, UsersRound } from 'lucide-react';
 
 import { createUserAction, resetUserPasswordAction, setUserStatusAction } from '@/app/admin/actions';
+import { canAssignRole, canManageUserRole } from '@/lib/admin-user-policy';
 import { prisma } from '@/lib/db';
 import { USER_STATUSES } from '@/lib/enums';
 import { formatDateTime } from '@/lib/display';
@@ -12,7 +13,7 @@ type UsersPageProps = {
 };
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
-  requireUser('user:read');
+  const currentUser = requireUser('user:read');
   const [users, roles] = await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
@@ -21,6 +22,9 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     }),
     prisma.role.findMany({ orderBy: { code: 'asc' } }),
   ]);
+  const assignableRoles = roles.filter((role) =>
+    canAssignRole({ actorRoleCode: currentUser.roleCode, targetRoleCode: role.code }),
+  );
 
   return (
     <main className="page stack">
@@ -58,7 +62,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
               角色
             </label>
             <select id="roleId" name="roleId" required>
-              {roles.map((role) => (
+              {assignableRoles.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.name}
                 </option>
@@ -102,30 +106,37 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                 <td>{user.status}</td>
                 <td>{user.lastLoginIp ?? '-'} · {formatDateTime(user.updatedAt)}</td>
                 <td>
-                  <div className="cluster">
-                    <form action={setUserStatusAction} className="cluster">
-                      <input type="hidden" name="id" value={user.id} />
-                      <select name="status" defaultValue={user.status}>
-                        {USER_STATUSES.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                      <button type="submit">
-                        <Save size={16} aria-hidden="true" />
-                        改状态
-                      </button>
-                    </form>
-                    <form action={resetUserPasswordAction} className="cluster">
-                      <input type="hidden" name="id" value={user.id} />
-                      <input name="password" placeholder="新密码" />
-                      <button type="submit">
-                        <KeyRound size={16} aria-hidden="true" />
-                        重置
-                      </button>
-                    </form>
-                  </div>
+                  {canManageUserRole({
+                    actorRoleCode: currentUser.roleCode,
+                    targetRoleCode: user.role.code,
+                  }) ? (
+                    <div className="cluster">
+                      <form action={setUserStatusAction} className="cluster">
+                        <input type="hidden" name="id" value={user.id} />
+                        <select name="status" defaultValue={user.status}>
+                          {USER_STATUSES.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="submit">
+                          <Save size={16} aria-hidden="true" />
+                          改状态
+                        </button>
+                      </form>
+                      <form action={resetUserPasswordAction} className="cluster">
+                        <input type="hidden" name="id" value={user.id} />
+                        <input name="password" placeholder="新密码" />
+                        <button type="submit">
+                          <KeyRound size={16} aria-hidden="true" />
+                          重置
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <span className="badge">仅超级管理员可操作</span>
+                  )}
                 </td>
               </tr>
             ))}
