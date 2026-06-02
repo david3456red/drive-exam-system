@@ -89,6 +89,8 @@
 - 按题库、题型、关键字筛选题目。
 - 新建题目：`/admin/questions/new`
 - 查看题目详情：`/admin/questions/[id]`
+- 新建题目支持填写图片 URL，或上传本地 JPG / PNG / WebP / GIF 题图。
+- 题目详情会显示题图预览，便于确认图标识别类题目素材。
 - 支持题目分类和标签。
 - 题型校验覆盖单选、多选、判断题。
 - 已被答题记录或错题本引用的题目不可删除。
@@ -99,6 +101,7 @@
 
 - 支持粘贴 JSON。
 - 支持上传 Excel。
+- 支持同时选择题目图片，导入行的 `imageUrl` 可填写所选图片文件名进行匹配。
 - 支持下载 Excel 模板：`/admin/questions/import/template`
 - 流程为“预览校验 -> 确认导入”。
 - 预览显示可导入数量、跳过数量和非法行错误码。
@@ -199,4 +202,5 @@ type, content, imageUrl, optionA, optionB, optionC, optionD, optionE, optionF, a
 - `type`：`SINGLE`、`MULTI`、`JUDGE`
 - `answer`：单选用单个字母，多选用升序字母串，判断用 `T` 或 `F`
 - `categories` / `tags`：多个值用 `|` 分隔
+- `imageUrl`：可填写 `https://` 外链、已有 `/uploads/...` 路径，或批量导入时所选图片的文件名
 - 若答案引用的选项列为空，该行会被标为非法

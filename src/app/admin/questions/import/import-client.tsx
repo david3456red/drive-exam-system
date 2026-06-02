@@ -1,8 +1,9 @@
 'use client';
 
-import { Download, FileSpreadsheet, FileText, Inbox, Save, Search, Upload } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, Image as ImageIcon, Inbox, Save, Search, Upload } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
 
+import type { ImportImageAttachment } from '@/lib/import/images';
 import type { CommitResult, PreviewResult } from '@/lib/import/types';
 import {
   commitExcelImportAction,
@@ -24,6 +25,8 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
   const [jsonPayload, setJsonPayload] = useState('');
   const [excelBytes, setExcelBytes] = useState<number[]>([]);
   const [fileName, setFileName] = useState('');
+  const [imageAttachments, setImageAttachments] = useState<ImportImageAttachment[]>([]);
+  const [imageFileNames, setImageFileNames] = useState<string[]>([]);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [message, setMessage] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -39,8 +42,8 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
     startTransition(async () => {
       const next =
         sourceKind === 'json'
-          ? await previewJsonImportAction(jsonPayload)
-          : await previewExcelImportAction(excelBytes);
+          ? await previewJsonImportAction(jsonPayload, imageAttachments)
+          : await previewExcelImportAction(excelBytes, imageAttachments);
       setPreview(next);
       setMessage(`预览完成：${next.valid.length} 条可导入，${next.invalid.length} 条将跳过`);
     });
@@ -55,8 +58,8 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
     startTransition(async () => {
       const result: CommitResult =
         sourceKind === 'json'
-          ? await commitJsonImportAction(jsonPayload, bankId)
-          : await commitExcelImportAction(excelBytes, bankId);
+          ? await commitJsonImportAction(jsonPayload, bankId, imageAttachments)
+          : await commitExcelImportAction(excelBytes, bankId, imageAttachments);
       if (result.ok) {
         setMessage(`导入完成：新增 ${result.insertedCount} 条，跳过 ${result.skippedCount} 条`);
         setPreview(null);
@@ -75,6 +78,24 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
     }
     const buffer = await file.arrayBuffer();
     setExcelBytes(Array.from(new Uint8Array(buffer)));
+  }
+
+  async function onImageFilesChange(files: FileList | null) {
+    setPreview(null);
+    const selected = Array.from(files ?? []);
+    setImageFileNames(selected.map((file) => file.name));
+    const attachments = await Promise.all(
+      selected.map(async (file) => {
+        const buffer = await file.arrayBuffer();
+        return {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          bytes: Array.from(new Uint8Array(buffer)),
+        } satisfies ImportImageAttachment;
+      }),
+    );
+    setImageAttachments(attachments);
   }
 
   return (
@@ -146,6 +167,24 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
           {fileName ? <span className="muted">{fileName}</span> : null}
         </div>
       )}
+
+      <div className="field">
+        <label htmlFor="imageFiles">
+          <ImageIcon size={15} aria-hidden="true" />
+          题目图片
+        </label>
+        <input
+          id="imageFiles"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          multiple
+          onChange={(event) => onImageFilesChange(event.target.files)}
+        />
+        <span className="muted">
+          Excel / JSON 的 imageUrl 可填写所选图片文件名；也可继续填写 https:// 或 /uploads/ 开头的地址。
+        </span>
+        {imageFileNames.length > 0 ? <span className="muted">已选择 {imageFileNames.join('、')}</span> : null}
+      </div>
 
       <div className="cluster">
         <button

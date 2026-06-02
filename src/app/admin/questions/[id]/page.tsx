@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle2, ClipboardList, Trash2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { deleteQuestionAction } from '@/app/admin/actions';
+import { QuestionImage } from '@/components/question-image';
 import { prisma } from '@/lib/db';
 import { QUESTION_TYPE_LABEL, parseQuestionOptions } from '@/lib/display';
 import type { QuestionType } from '@/lib/enums';
@@ -59,7 +60,12 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
           <span className="badge warn">错题记录 {question._count.wrongs}</span>
         </div>
         <h2>{question.content}</h2>
-        {question.imageUrl ? <p className="muted">图片：{question.imageUrl}</p> : null}
+        {question.imageUrl ? (
+          <div className="stack">
+            <p className="muted">图片：{question.imageUrl}</p>
+            <QuestionImage src={question.imageUrl} />
+          </div>
+        ) : null}
         <div className="stack">
           {options.map((option) => (
             <div

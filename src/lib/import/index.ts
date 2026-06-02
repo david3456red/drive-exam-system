@@ -9,6 +9,10 @@ type CommitOptions = {
   bankId?: string;
 };
 
+type CommitRowsOptions = CommitOptions & {
+  skippedCount?: number;
+};
+
 export function previewImport(source: ImportSource, payload: unknown): PreviewResult {
   const rows = source.parse(payload);
   const result: PreviewResult = { valid: [], invalid: [] };
@@ -32,17 +36,29 @@ export async function commitImport(
   options: CommitOptions = {},
 ): Promise<CommitResult> {
   const preview = previewImport(source, payload);
-  let insertedCount = 0;
-  let skippedCount = preview.invalid.length;
 
-  if (preview.valid.length === 0) {
+  return commitImportRows(prisma, preview.valid, {
+    ...options,
+    skippedCount: preview.invalid.length,
+  });
+}
+
+export async function commitImportRows(
+  prisma: PrismaClient,
+  rows: ImportRow[],
+  options: CommitRowsOptions = {},
+): Promise<CommitResult> {
+  let insertedCount = 0;
+  let skippedCount = options.skippedCount ?? 0;
+
+  if (rows.length === 0) {
     return { ok: true, insertedCount, skippedCount };
   }
 
   await prisma.$transaction(async (tx) => {
     const bankCache = new Map<string, string | null>();
 
-    for (const row of preview.valid) {
+    for (const row of rows) {
       const bankId = await resolveBankId(tx, row, options, bankCache);
       if (!bankId) {
         skippedCount++;

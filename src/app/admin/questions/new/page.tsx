@@ -30,7 +30,7 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
       </div>
       {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
 
-      <form action={createQuestionAction} className="panel stack">
+      <form action={createQuestionAction} className="panel stack" encType="multipart/form-data">
         <div className="grid">
           <div className="field">
             <label htmlFor="bankId">
@@ -75,12 +75,23 @@ export default async function NewQuestionPage({ searchParams }: NewQuestionPageP
           </label>
           <textarea id="content" name="content" required />
         </div>
-        <div className="field">
-          <label htmlFor="imageUrl">
-            <ImageIcon size={15} aria-hidden="true" />
-            图片 URL
-          </label>
-          <input id="imageUrl" name="imageUrl" placeholder="https://..." />
+        <div className="grid">
+          <div className="field">
+            <label htmlFor="imageUrl">
+              <ImageIcon size={15} aria-hidden="true" />
+              图片 URL
+            </label>
+            <input id="imageUrl" name="imageUrl" placeholder="https://..." />
+            <span className="muted">可填写外链或已有 /uploads 路径。</span>
+          </div>
+          <div className="field">
+            <label htmlFor="imageFile">
+              <ImageIcon size={15} aria-hidden="true" />
+              上传图片
+            </label>
+            <input id="imageFile" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
+            <span className="muted">和图片 URL 二选一，支持 JPG / PNG / WebP / GIF，单张不超过 5MB。</span>
+          </div>
         </div>
 
         <section className="grid" aria-label="选项">

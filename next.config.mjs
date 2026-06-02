@@ -7,6 +7,9 @@ const nextConfig = {
   poweredByHeader: false,
   // 不启用 instrumentationHook 等会带来 RSS 上涨的实验特性(Requirement 31.1)
   experimental: {
+    serverActions: {
+      bodySizeLimit: '25mb',
+    },
     // bcryptjs / @prisma/client 仅运行在 Server 端,标记为外置以避免 bundle 进 RSC bundle
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },

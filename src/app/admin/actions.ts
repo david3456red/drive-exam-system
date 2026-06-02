@@ -11,6 +11,11 @@ import {
 } from '@/lib/admin-user-policy';
 import { prisma } from '@/lib/db';
 import { QUESTION_TYPES, USER_STATUSES, type QuestionType, type UserStatus } from '@/lib/enums';
+import {
+  QuestionImageInputError,
+  QuestionImageUploadError,
+  resolveQuestionImageFromFormData,
+} from '@/lib/question-images';
 import { JUDGE_OPTIONS, validateQuestionPayload } from '@/lib/question-validate';
 import { requireUser } from '@/lib/server-session';
 
@@ -101,7 +106,7 @@ export async function createQuestionAction(formData: FormData): Promise<void> {
   const payload = {
     type,
     content,
-    imageUrl: nullableText(formData, 'imageUrl'),
+    imageUrl: null,
     options,
     answer,
     explanation: nullableText(formData, 'explanation'),
@@ -112,13 +117,20 @@ export async function createQuestionAction(formData: FormData): Promise<void> {
     redirect(`/admin/questions/new?error=${encodeURIComponent(validation.errors.join('、'))}`);
   }
 
+  let imageUrl: string | null;
+  try {
+    imageUrl = await resolveQuestionImageFromFormData(formData);
+  } catch (error) {
+    redirect(`/admin/questions/new?error=${encodeURIComponent(questionImageErrorMessage(error))}`);
+  }
+
   const categoryIds = unique(formData.getAll('categoryIds').map(String).filter(Boolean));
   const question = await prisma.question.create({
     data: {
       bankId,
       type,
       content,
-      imageUrl: payload.imageUrl,
+      imageUrl,
       options: JSON.stringify(options),
       answer,
       explanation: payload.explanation,
@@ -283,4 +295,15 @@ function readQuestionType(value: string): QuestionType | null {
 
 function readUserStatus(value: string): UserStatus | null {
   return USER_STATUSES.includes(value as UserStatus) ? (value as UserStatus) : null;
+}
+
+function questionImageErrorMessage(error: unknown): string {
+  if (error instanceof QuestionImageInputError) {
+    return '图片 URL 和上传图片只能选择一个';
+  }
+  if (error instanceof QuestionImageUploadError) {
+    if (error.code === 'IMAGE_FILE_TYPE_INVALID') return '图片格式不支持，请上传 JPG、PNG、WebP 或 GIF';
+    if (error.code === 'IMAGE_FILE_TOO_LARGE') return '单张图片不能超过 5MB';
+  }
+  throw error;
 }

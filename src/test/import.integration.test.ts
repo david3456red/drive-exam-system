@@ -1,11 +1,13 @@
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { commitImport } from '@/lib/import';
+import { commitImport, commitImportRows } from '@/lib/import';
+import { prepareImportRowsWithImages, type ImportImageAttachment } from '@/lib/import/images';
 import { jsonSource } from '@/lib/import/json-source';
 
 const prisma = new PrismaClient({
@@ -14,6 +16,7 @@ const prisma = new PrismaClient({
 
 const bankCode = 'import_bank';
 let bankId = '';
+const tempRoots: string[] = [];
 
 beforeAll(async () => {
   ensureTestDatabaseFile();
@@ -25,6 +28,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  for (const root of tempRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
   await prisma.$disconnect();
 });
 
@@ -45,6 +51,21 @@ function ensureTestDatabaseFile(): void {
   if (!existsSync(testDbPath)) {
     writeFileSync(testDbPath, '');
   }
+}
+
+function makeTempPublicRoot(): string {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'drive-import-integration-images-'));
+  tempRoots.push(root);
+  return root;
+}
+
+function image(name: string, bytes = [1, 2, 3]): ImportImageAttachment {
+  return {
+    name,
+    type: 'image/png',
+    size: bytes.length,
+    bytes,
+  };
 }
 
 describe('commitImport', () => {
@@ -131,5 +152,37 @@ describe('commitImport', () => {
 
     const question = await prisma.question.findFirstOrThrow();
     expect(question.bankId).toBe(bankId);
+  });
+
+  it('commits prepared image rows with generated public upload URLs', async () => {
+    const prepared = await prepareImportRowsWithImages(
+      jsonSource,
+      [
+        {
+          type: 'SINGLE',
+          content: 'image import question',
+          imageUrl: 'stop.png',
+          optionA: 'go',
+          optionB: 'stop',
+          answer: 'B',
+          categories: [],
+          tags: [],
+        },
+      ],
+      [image('stop.png')],
+      {
+        publicRoot: makeTempPublicRoot(),
+        randomId: () => 'integration-image',
+      },
+    );
+
+    const result = await commitImportRows(prisma, prepared.rows, {
+      bankId,
+      skippedCount: prepared.skippedCount,
+    });
+
+    expect(result).toEqual({ ok: true, insertedCount: 1, skippedCount: 0 });
+    const question = await prisma.question.findFirstOrThrow();
+    expect(question.imageUrl).toBe('/uploads/questions/integration-image.png');
   });
 });

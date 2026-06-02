@@ -26,7 +26,7 @@ import { parseOrder } from '@/lib/exam-engine/snapshot';
 import { requireUser } from '@/lib/server-session';
 import { MockEffects } from './mock-effects';
 import { CostInput } from './cost-input';
-import { QuestionImage } from './question-image';
+import { QuestionImage } from '@/components/question-image';
 
 type SessionPageProps = {
   params: { attemptId: string };

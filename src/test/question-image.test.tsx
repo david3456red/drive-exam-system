@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { QuestionImage } from '@/app/exam/session/[attemptId]/question-image';
+import { QuestionImage } from '@/components/question-image';
 
 describe('QuestionImage', () => {
   it('shows an accessible fallback when the image fails to load', () => {
