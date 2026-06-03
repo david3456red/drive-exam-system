@@ -8,11 +8,12 @@ import { loginAction } from '@/app/actions/auth';
 
 type LoginFormProps = {
   title: string;
+  loginEntry: 'student' | 'admin';
   error?: string;
   notice?: string;
 };
 
-export function LoginForm({ title, error, notice }: LoginFormProps) {
+export function LoginForm({ title, loginEntry, error, notice }: LoginFormProps) {
   const [deviceId, setDeviceId] = useState('');
   const [deviceError, setDeviceError] = useState('');
 
@@ -49,6 +50,7 @@ export function LoginForm({ title, error, notice }: LoginFormProps) {
       {notice ? <div className="notice">{notice}</div> : null}
       {deviceError ? <div className="error">{deviceError}</div> : null}
       <input type="hidden" name="deviceId" value={deviceId} />
+      <input type="hidden" name="loginEntry" value={loginEntry} />
       <div className="field">
         <label htmlFor="username">
           <UserRound size={15} aria-hidden="true" />

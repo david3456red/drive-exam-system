@@ -795,6 +795,112 @@ tbody tr:hover {
   margin: 0 auto;
 }
 
+.session-toolbar {
+  justify-content: space-between;
+}
+
+.exam-session-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: start;
+  gap: 18px;
+}
+
+.exam-session-main {
+  min-width: 0;
+}
+
+.answer-card {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+}
+
+.answer-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.answer-card-head h2,
+.answer-card-head p {
+  margin: 0;
+}
+
+.answer-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 8px;
+}
+
+.answer-card-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 0;
+  border-radius: var(--radius);
+  padding: 0;
+  font-size: 0.95rem;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.answer-card-cell:hover {
+  transform: translateY(-1px);
+}
+
+.answer-card-cell-current {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
+.answer-card-cell-correct {
+  border-color: rgb(35 116 77 / 34%);
+  background: var(--success);
+  color: white;
+}
+
+.answer-card-cell-wrong {
+  border-color: rgb(180 35 24 / 34%);
+  background: var(--danger);
+  color: white;
+}
+
+.answer-card-cell-answered {
+  border-color: var(--line-strong);
+  background: var(--ink-soft);
+  color: white;
+}
+
+.answer-card-cell-empty {
+  border-color: var(--line);
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.answer-card-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.answer-card-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.answer-card-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
 .option {
   min-height: 50px;
   display: flex;
@@ -916,13 +1022,19 @@ tbody tr:hover {
 
   .workbench-hero,
   .auth-shell,
-  .admin-hero {
+  .admin-hero,
+  .exam-session-layout {
     grid-template-columns: 1fr;
   }
 
   .workbench-intro,
   .login-context {
     min-height: auto;
+  }
+
+  .answer-card {
+    position: static;
+    order: -1;
   }
 
   .home-modules,
@@ -991,6 +1103,10 @@ tbody tr:hover {
 
   .status-row .badge {
     grid-column: 2;
+  }
+
+  .answer-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
   }
 
   th,

@@ -115,68 +115,110 @@ export async function submitAnswerAction(formData: FormData): Promise<void> {
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) redirect(`/exam/session/${attempt.id}`);
 
-  const duplicate = await prisma.examRecord.findFirst({
+  const existingRecord = await prisma.examRecord.findFirst({
     where: { attemptId: attempt.id, questionId },
     select: { id: true },
   });
-  if (duplicate) redirect(`/exam/session/${attempt.id}?error=该题已提交`);
+  if (existingRecord && attempt.mode !== 'MOCK') {
+    redirect(`/exam/session/${attempt.id}?error=${encodeURIComponent('该题已判题，不能修改')}`);
+  }
 
   const questionType = question.type as QuestionType;
   const normalized = normalizeAnswer(questionType, userAnswer);
   const isCorrect = compareAnswer(questionType, normalized, question.answer);
   const now = new Date();
+  let nextCurrentIndex = submittedQuestion.index;
 
   await prisma.$transaction(async (tx) => {
-    await tx.examRecord.create({
-      data: {
-        attemptId: attempt.id,
-        questionId,
-        userAnswer: normalized,
-        isCorrect,
-        costMs: clampCostMs(costMs),
-      },
-    });
-
-    const prev = await tx.wrongQuestion.findUnique({
-      where: { userId_questionId: { userId: user.id, questionId } },
-    });
-    const next = applyExamResult(prev, isCorrect, now);
-    if (next) {
-      await tx.wrongQuestion.upsert({
-        where: { userId_questionId: { userId: user.id, questionId } },
-        update: {
-          wrongCount: next.wrongCount,
-          rightCount: next.rightCount,
-          mastered: next.mastered,
-          lastWrongAt: next.lastWrongAt,
+    if (attempt.mode === 'MOCK' && existingRecord) {
+      await tx.examRecord.update({
+        where: { id: existingRecord.id },
+        data: {
+          userAnswer: normalized,
+          isCorrect,
+          costMs: clampCostMs(costMs),
         },
-        create: {
-          userId: user.id,
+      });
+    } else {
+      await tx.examRecord.create({
+        data: {
+          attemptId: attempt.id,
           questionId,
-          wrongCount: next.wrongCount,
-          rightCount: next.rightCount,
-          mastered: next.mastered,
-          lastWrongAt: next.lastWrongAt,
+          userAnswer: normalized,
+          isCorrect,
+          costMs: clampCostMs(costMs),
         },
       });
     }
 
-    const nextIndex = submittedQuestion.index + 1;
+    if (attempt.mode !== 'MOCK') {
+      const prev = await tx.wrongQuestion.findUnique({
+        where: { userId_questionId: { userId: user.id, questionId } },
+      });
+      const next = applyExamResult(prev, isCorrect, now);
+      if (next) {
+        await tx.wrongQuestion.upsert({
+          where: { userId_questionId: { userId: user.id, questionId } },
+          update: {
+            wrongCount: next.wrongCount,
+            rightCount: next.rightCount,
+            mastered: next.mastered,
+            lastWrongAt: next.lastWrongAt,
+          },
+          create: {
+            userId: user.id,
+            questionId,
+            wrongCount: next.wrongCount,
+            rightCount: next.rightCount,
+            mastered: next.mastered,
+            lastWrongAt: next.lastWrongAt,
+          },
+        });
+      }
+    }
+
+    const answered = await tx.examRecord.findMany({
+      where: { attemptId: attempt.id },
+      select: { questionId: true },
+    });
+    nextCurrentIndex = findNextUnansweredIndex(
+      order,
+      answered.map((record) => record.questionId),
+      submittedQuestion.index,
+    );
     await tx.examAttempt.update({
       where: { id: attempt.id },
-      data: { currentIndex: Math.min(nextIndex, Math.max(order.length - 1, 0)) },
+      data: { currentIndex: nextCurrentIndex },
     });
   });
-
-  const isLast = submittedQuestion.index >= order.length - 1;
-  if (isLast) {
-    await finalizeAttempt(attempt.id, user.id, 'FINISHED');
-    redirect(`/exam/session/${attempt.id}/result`);
-  }
 
   const feedback =
     attempt.mode === 'MOCK' ? '' : `?feedback=${encodeURIComponent(questionId)}`;
   redirect(`/exam/session/${attempt.id}${feedback}`);
+}
+
+export async function goToQuestionAction(formData: FormData): Promise<void> {
+  const user = requireUser();
+  const attemptId = String(formData.get('attemptId') ?? '');
+  const questionId = String(formData.get('questionId') ?? '');
+
+  const attempt = await prisma.examAttempt.findFirst({
+    where: { id: attemptId, userId: user.id },
+  });
+  if (!attempt || attempt.status !== 'ONGOING') redirect('/exam');
+
+  const order = parseOrder(attempt.questionOrder);
+  const targetQuestion = resolveSubmittedQuestion(order, questionId);
+  if (!targetQuestion.ok) {
+    redirect(`/exam/session/${attempt.id}?error=${encodeURIComponent('题目不属于本次会话')}`);
+  }
+
+  await prisma.examAttempt.update({
+    where: { id: attempt.id },
+    data: { currentIndex: targetQuestion.index },
+  });
+
+  redirect(`/exam/session/${attempt.id}`);
 }
 
 export async function finishAttemptAction(formData: FormData): Promise<void> {
@@ -259,6 +301,36 @@ export async function finalizeAttempt(
           })),
         });
       }
+
+      const finalRecords = await tx.examRecord.findMany({
+        where: { attemptId, questionId: { in: order } },
+        select: { questionId: true, isCorrect: true },
+      });
+      for (const record of finalRecords) {
+        const prev = await tx.wrongQuestion.findUnique({
+          where: { userId_questionId: { userId, questionId: record.questionId } },
+        });
+        const next = applyExamResult(prev, record.isCorrect, finishedAt);
+        if (next) {
+          await tx.wrongQuestion.upsert({
+            where: { userId_questionId: { userId, questionId: record.questionId } },
+            update: {
+              wrongCount: next.wrongCount,
+              rightCount: next.rightCount,
+              mastered: next.mastered,
+              lastWrongAt: next.lastWrongAt,
+            },
+            create: {
+              userId,
+              questionId: record.questionId,
+              wrongCount: next.wrongCount,
+              rightCount: next.rightCount,
+              mastered: next.mastered,
+              lastWrongAt: next.lastWrongAt,
+            },
+          });
+        }
+      }
     }
 
     const totalCount = order.length;
@@ -283,6 +355,26 @@ export async function finalizeAttempt(
   revalidatePath('/exam');
   revalidatePath('/exam/history');
   revalidatePath('/exam/wrong');
+}
+
+function findNextUnansweredIndex(
+  order: string[],
+  answeredQuestionIds: string[],
+  submittedIndex: number,
+): number {
+  if (order.length === 0) return 0;
+  const answered = new Set(answeredQuestionIds);
+  const start = Math.min(Math.max(submittedIndex, 0), order.length - 1);
+
+  for (let offset = 1; offset <= order.length; offset += 1) {
+    const index = (start + offset) % order.length;
+    const questionId = order[index];
+    if (questionId && !answered.has(questionId)) {
+      return index;
+    }
+  }
+
+  return start;
 }
 
 function loadErrorText(error: string): string {

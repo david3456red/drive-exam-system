@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 
 import { loginPipeline } from '@/lib/auth-pipeline';
 import { prisma } from '@/lib/db';
+import { loginFailurePath, readLoginEntry } from '@/lib/login-flow';
 import {
   clearSessionCookie,
   getCurrentUser,
@@ -25,6 +26,7 @@ export async function loginAction(formData: FormData): Promise<void> {
   const username = String(formData.get('username') ?? '');
   const password = String(formData.get('password') ?? '');
   const deviceId = String(formData.get('deviceId') ?? '');
+  const loginEntry = readLoginEntry(formData.get('loginEntry'));
 
   const user = await loginPipeline({
     username,
@@ -35,7 +37,9 @@ export async function loginAction(formData: FormData): Promise<void> {
   });
 
   if (!user) {
-    redirect(`/login?error=${encodeURIComponent('用户名或密码错误，或账号状态不可用')}`);
+    redirect(
+      `${loginFailurePath(loginEntry)}?error=${encodeURIComponent('用户名或密码错误，或账号状态不可用')}`,
+    );
   }
 
   const sessionUser: SessionUser = {

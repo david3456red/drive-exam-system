@@ -55,6 +55,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
         <LoginForm
           title="学生登录"
+          loginEntry="student"
           error={searchParams?.error}
           notice={searchParams?.notice}
         />

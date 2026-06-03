@@ -7,12 +7,11 @@ import {
   History,
   ListChecks,
   PlayCircle,
-  RotateCcw,
   Shuffle,
-  Trash2,
 } from 'lucide-react';
 
-import { startSessionAction, abandonAttemptAction, adoptExpiredMockForCurrentUser } from './actions';
+import { startSessionAction, adoptExpiredMockForCurrentUser } from './actions';
+import { OngoingAttemptActions } from './ongoing-attempt-actions';
 import { prisma } from '@/lib/db';
 import { EXAM_MODE_LABEL } from '@/lib/display';
 import { hasPermission } from '@/lib/permissions';
@@ -92,19 +91,7 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
                 return (
                   <div className="cluster" key={mode}>
                     {attemptId ? (
-                      <>
-                        <Link className="button primary" href={`/exam/session/${attemptId}`}>
-                          <RotateCcw size={17} aria-hidden="true" />
-                          继续{EXAM_MODE_LABEL[mode]}
-                        </Link>
-                        <form action={abandonAttemptAction}>
-                          <input type="hidden" name="attemptId" value={attemptId} />
-                          <button className="ghost" type="submit">
-                            <Trash2 size={17} aria-hidden="true" />
-                            放弃
-                          </button>
-                        </form>
-                      </>
+                      <OngoingAttemptActions attemptId={attemptId} label={EXAM_MODE_LABEL[mode]} />
                     ) : (
                       <form action={startSessionAction} className="stack" style={{ width: '100%' }}>
                         <input type="hidden" name="bankId" value={bank.id} />
@@ -152,10 +139,10 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
             <p className="muted">按最近答错时间倒序抽取未掌握错题。</p>
           </div>
           {ongoingKey.get('wrong:WRONG_REVIEW') ? (
-            <Link className="button primary" href={`/exam/session/${ongoingKey.get('wrong:WRONG_REVIEW')}`}>
-              <RotateCcw size={17} aria-hidden="true" />
-              继续错题重做
-            </Link>
+            <OngoingAttemptActions
+              attemptId={ongoingKey.get('wrong:WRONG_REVIEW')!}
+              label="错题重做"
+            />
           ) : (
             <form action={startSessionAction}>
               <input type="hidden" name="mode" value="WRONG_REVIEW" />

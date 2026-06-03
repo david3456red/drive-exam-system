@@ -55,6 +55,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
         </div>
         <LoginForm
           title="后台登录"
+          loginEntry="admin"
           error={searchParams?.error}
           notice={searchParams?.notice}
         />
