@@ -15,8 +15,9 @@ import {
   QuestionImageInputError,
   QuestionImageUploadError,
   resolveQuestionImageFromFormData,
+  resolveQuestionImageUpdateFromFormData,
 } from '@/lib/question-images';
-import { JUDGE_OPTIONS, validateQuestionPayload } from '@/lib/question-validate';
+import { JUDGE_OPTIONS, validateQuestionPayload, type QuestionOption } from '@/lib/question-validate';
 import { requireUser } from '@/lib/server-session';
 
 const OPTION_KEYS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
@@ -94,7 +95,7 @@ export async function createQuestionAction(formData: FormData): Promise<void> {
   const content = text(formData, 'content');
   const answer = text(formData, 'answer').toUpperCase();
   if (!bankId || !type || !content || !answer) {
-    redirect('/admin/questions/new?error=请填写题库、题型、题干和答案');
+    redirect(`/admin/questions/new?error=${encodeURIComponent('请填写题库、题型、题干和答案')}`);
   }
 
   const options =
@@ -150,7 +151,93 @@ export async function createQuestionAction(formData: FormData): Promise<void> {
 
   revalidatePath('/admin/questions');
   revalidatePath('/exam');
-  redirect(`/admin/questions/${question.id}?notice=题目已创建`);
+  redirect(`/admin/questions/${question.id}?notice=${encodeURIComponent('题目已创建')}`);
+}
+
+export async function updateQuestionAction(formData: FormData): Promise<void> {
+  requireUser('question:write');
+  const id = text(formData, 'id');
+  const editPath = `/admin/questions/${id}/edit`;
+  const existing = await prisma.question.findUnique({
+    where: { id },
+    include: { _count: { select: { records: true, wrongs: true } } },
+  });
+  if (!existing) redirect(`/admin/questions?error=${encodeURIComponent('题目不存在')}`);
+
+  const lockedScoringFields = existing._count.records + existing._count.wrongs > 0;
+  const bankId = text(formData, 'bankId');
+  const content = text(formData, 'content');
+  if (!bankId || !content) {
+    redirect(`${editPath}?error=${encodeURIComponent('请填写题库和题干')}`);
+  }
+
+  const type = lockedScoringFields
+    ? readQuestionType(existing.type)
+    : readQuestionType(text(formData, 'type'));
+  const answer = lockedScoringFields ? existing.answer : text(formData, 'answer').toUpperCase();
+  if (!type || !answer) {
+    redirect(`${editPath}?error=${encodeURIComponent('请填写题型和答案')}`);
+  }
+
+  const options =
+    lockedScoringFields
+      ? parseStoredQuestionOptions(existing.options)
+      : type === 'JUDGE'
+        ? [...JUDGE_OPTIONS]
+        : OPTION_KEYS.map((key) => ({ key, text: text(formData, `option${key}`) })).filter(
+            (option) => option.text.length > 0,
+          );
+  const payload = {
+    type,
+    content,
+    imageUrl: existing.imageUrl,
+    options,
+    answer,
+    explanation: nullableText(formData, 'explanation'),
+    tags: splitList(text(formData, 'tags')),
+  };
+  const validation = validateQuestionPayload(payload);
+  if (!validation.ok) {
+    redirect(`${editPath}?error=${encodeURIComponent(validation.errors.join('、'))}`);
+  }
+
+  let imageUrl: string | null;
+  try {
+    imageUrl = await resolveQuestionImageUpdateFromFormData(formData, existing.imageUrl);
+  } catch (error) {
+    redirect(`${editPath}?error=${encodeURIComponent(questionImageErrorMessage(error))}`);
+  }
+
+  const categoryIds = unique(formData.getAll('categoryIds').map(String).filter(Boolean));
+  await prisma.$transaction(async (tx) => {
+    await tx.question.update({
+      where: { id },
+      data: {
+        bankId,
+        type,
+        content,
+        imageUrl,
+        options: JSON.stringify(options),
+        answer,
+        explanation: payload.explanation,
+        tags: JSON.stringify(payload.tags),
+      },
+    });
+    await tx.questionCategory.deleteMany({ where: { questionId: id } });
+    if (categoryIds.length > 0) {
+      await tx.questionCategory.createMany({
+        data: categoryIds.map((categoryId) => ({
+          questionId: id,
+          categoryId,
+        })),
+      });
+    }
+  });
+
+  revalidatePath('/admin/questions');
+  revalidatePath(`/admin/questions/${id}`);
+  revalidatePath('/exam');
+  redirect(`/admin/questions/${id}?notice=${encodeURIComponent('题目已更新')}`);
 }
 
 export async function deleteQuestionAction(formData: FormData): Promise<void> {
@@ -159,11 +246,11 @@ export async function deleteQuestionAction(formData: FormData): Promise<void> {
   const usageCount =
     (await prisma.examRecord.count({ where: { questionId: id } })) +
     (await prisma.wrongQuestion.count({ where: { questionId: id } }));
-  if (usageCount > 0) redirect(`/admin/questions/${id}?error=已有作答或错题记录，不能删除`);
+  if (usageCount > 0) redirect(`/admin/questions/${id}?error=${encodeURIComponent('已有作答或错题记录，不能删除')}`);
   await prisma.questionCategory.deleteMany({ where: { questionId: id } });
   await prisma.question.delete({ where: { id } });
   revalidatePath('/admin/questions');
-  redirect('/admin/questions?notice=题目已删除');
+  redirect(`/admin/questions?notice=${encodeURIComponent('题目已删除')}`);
 }
 
 export async function updateRolePermissionsAction(formData: FormData): Promise<void> {
@@ -291,6 +378,30 @@ function unique(values: string[]): string[] {
 
 function readQuestionType(value: string): QuestionType | null {
   return QUESTION_TYPES.includes(value as QuestionType) ? (value as QuestionType) : null;
+}
+
+function parseStoredQuestionOptions(raw: string): QuestionOption[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => {
+        if (
+          item &&
+          typeof item === 'object' &&
+          'key' in item &&
+          'text' in item &&
+          typeof item.key === 'string' &&
+          typeof item.text === 'string'
+        ) {
+          return { key: item.key, text: item.text };
+        }
+        return null;
+      })
+      .filter((item): item is QuestionOption => item !== null);
+  } catch {
+    return [];
+  }
 }
 
 function readUserStatus(value: string): UserStatus | null {

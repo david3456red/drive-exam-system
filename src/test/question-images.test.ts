@@ -8,6 +8,7 @@ import {
   MAX_QUESTION_IMAGE_BYTES,
   QuestionImageUploadError,
   resolveQuestionImageFromFormData,
+  resolveQuestionImageUpdateFromFormData,
   saveQuestionImageFile,
 } from '@/lib/question-images';
 
@@ -93,6 +94,48 @@ describe('question image uploads', () => {
     formData.set('imageFile', new File([new Uint8Array([9])], 'warning.png', { type: 'image/png' }));
 
     await expect(resolveQuestionImageFromFormData(formData)).rejects.toMatchObject({
+      code: 'IMAGE_INPUT_CONFLICT',
+    });
+  });
+
+  it('keeps, replaces with URL, and removes the current edit image from edit form inputs', async () => {
+    const keep = new FormData();
+    await expect(resolveQuestionImageUpdateFromFormData(keep, '/uploads/questions/current.png')).resolves.toBe(
+      '/uploads/questions/current.png',
+    );
+
+    const url = new FormData();
+    url.set('imageUrl', 'https://example.test/replacement.png');
+    await expect(resolveQuestionImageUpdateFromFormData(url, '/uploads/questions/current.png')).resolves.toBe(
+      'https://example.test/replacement.png',
+    );
+
+    const remove = new FormData();
+    remove.set('removeImage', 'on');
+    await expect(resolveQuestionImageUpdateFromFormData(remove, '/uploads/questions/current.png')).resolves.toBeNull();
+  });
+
+  it('uploads an edit replacement image when a file is selected', async () => {
+    const publicRoot = makeTempPublicRoot();
+    const formData = new FormData();
+    formData.set('imageFile', new File([new Uint8Array([7])], 'replacement.jpg', { type: 'image/jpeg' }));
+
+    await expect(
+      resolveQuestionImageUpdateFromFormData(formData, '/uploads/questions/current.png', {
+        publicRoot,
+        randomId: () => 'edit-replacement',
+      }),
+    ).resolves.toBe('/uploads/questions/edit-replacement.jpg');
+  });
+
+  it('rejects edit forms that provide both a replacement URL and an upload', async () => {
+    const formData = new FormData();
+    formData.set('imageUrl', 'https://example.test/replacement.png');
+    formData.set('imageFile', new File([new Uint8Array([7])], 'replacement.jpg', { type: 'image/jpeg' }));
+
+    await expect(
+      resolveQuestionImageUpdateFromFormData(formData, '/uploads/questions/current.png'),
+    ).rejects.toMatchObject({
       code: 'IMAGE_INPUT_CONFLICT',
     });
   });

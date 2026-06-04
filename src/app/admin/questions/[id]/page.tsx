@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, ClipboardList, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardList, Pencil, Trash2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { deleteQuestionAction } from '@/app/admin/actions';
@@ -32,10 +32,16 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
   return (
     <main className="page stack">
       <div className="page-title">
-        <Link className="button" href="/admin/questions">
-          <ArrowLeft size={17} aria-hidden="true" />
-          返回题目
-        </Link>
+        <div className="cluster">
+          <Link className="button" href="/admin/questions">
+            <ArrowLeft size={17} aria-hidden="true" />
+            返回题目
+          </Link>
+          <Link className="button primary" href={`/admin/questions/${question.id}/edit`}>
+            <Pencil size={17} aria-hidden="true" />
+            编辑题目
+          </Link>
+        </div>
         <h1>题目详情</h1>
         <p>查看题干、答案、选项和使用情况。已有答题记录的题目建议谨慎删除。</p>
       </div>

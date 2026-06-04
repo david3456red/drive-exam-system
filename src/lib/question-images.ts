@@ -112,6 +112,30 @@ export async function resolveQuestionImageFromFormData(
   return imageUrl.length > 0 ? imageUrl : null;
 }
 
+export async function resolveQuestionImageUpdateFromFormData(
+  formData: FormData,
+  currentImageUrl: string | null,
+  options: SaveQuestionImageOptions = {},
+): Promise<string | null> {
+  if (formData.has('removeImage')) {
+    return null;
+  }
+
+  const imageUrl = String(formData.get('imageUrl') ?? '').trim();
+  const imageFile = readUploadedFile(formData.get('imageFile'));
+
+  if (imageUrl && imageFile) {
+    throw new QuestionImageInputError('IMAGE_INPUT_CONFLICT');
+  }
+
+  if (imageFile) {
+    const saved = await saveQuestionImageFile(imageFile, options);
+    return saved.url;
+  }
+
+  return imageUrl.length > 0 ? imageUrl : currentImageUrl;
+}
+
 export function validateQuestionImageAttachment(
   attachment: ImportImageAttachment,
 ): QuestionImageUploadError | null {

@@ -8,6 +8,7 @@ import {
   Eye,
   FilePlus2,
   FolderTree,
+  Pencil,
   Search,
   Upload,
 } from 'lucide-react';
@@ -148,10 +149,16 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
                 </td>
                 <td>{formatDateTime(question.createdAt)}</td>
                 <td>
-                  <Link className="button" href={`/admin/questions/${question.id}`}>
-                    <Eye size={16} aria-hidden="true" />
-                    详情
-                  </Link>
+                  <div className="cluster">
+                    <Link className="button" href={`/admin/questions/${question.id}`}>
+                      <Eye size={16} aria-hidden="true" />
+                      详情
+                    </Link>
+                    <Link className="button" href={`/admin/questions/${question.id}/edit`}>
+                      <Pencil size={16} aria-hidden="true" />
+                      编辑
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
