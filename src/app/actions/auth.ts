@@ -65,14 +65,14 @@ export async function changePasswordAction(formData: FormData): Promise<void> {
   const confirmPassword = String(formData.get('confirmPassword') ?? '');
 
   if (!oldPassword || !newPassword || newPassword !== confirmPassword) {
-    redirect('/change-password?error=请检查旧密码和两次新密码');
+    redirect(`/change-password?error=${encodeURIComponent('请检查旧密码和两次新密码')}`);
   }
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
   if (!dbUser) redirect('/login');
 
   const ok = await bcrypt.compare(oldPassword, dbUser.passwordHash);
-  if (!ok) redirect('/change-password?error=旧密码错误');
+  if (!ok) redirect(`/change-password?error=${encodeURIComponent('旧密码错误')}`);
 
   await prisma.user.update({
     where: { id: user.id },
@@ -80,7 +80,7 @@ export async function changePasswordAction(formData: FormData): Promise<void> {
   });
 
   clearSessionCookie();
-  redirect('/login?notice=密码已修改，请重新登录');
+  redirect(`/login?notice=${encodeURIComponent('密码已修改，请重新登录')}`);
 }
 
 export async function redirectAfterLogin(): Promise<void> {

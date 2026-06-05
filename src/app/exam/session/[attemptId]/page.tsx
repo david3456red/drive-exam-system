@@ -5,7 +5,6 @@ import {
   ClipboardCheck,
   Flag,
   Hash,
-  Send,
   Trash2,
   XCircle,
 } from 'lucide-react';
@@ -27,8 +26,8 @@ import {
 import { buildAnswerCardItems } from '@/lib/exam-engine/answer-card';
 import { parseOrder } from '@/lib/exam-engine/snapshot';
 import { requireUser } from '@/lib/server-session';
+import { QuestionAnswerForm } from './answer-form';
 import { AnswerCard } from './answer-card';
-import { CostInput } from './cost-input';
 import { MockEffects } from './mock-effects';
 
 type SessionPageProps = {
@@ -189,28 +188,15 @@ export default async function SessionPage({
                 ))}
               </div>
             ) : (
-              <form action={submitAnswerAction} className="stack">
-                <input type="hidden" name="attemptId" value={attempt.id} />
-                <input type="hidden" name="questionId" value={question.id} />
-                <CostInput />
-                {options.map((option) => (
-                  <label className="option" key={option.key}>
-                    <input
-                      defaultChecked={currentRecord?.userAnswer.includes(option.key) ?? false}
-                      type={question.type === 'MULTI' ? 'checkbox' : 'radio'}
-                      name="answer"
-                      value={option.key}
-                      required={question.type !== 'MULTI'}
-                    />
-                    <strong>{option.key}</strong>
-                    <span>{option.text}</span>
-                  </label>
-                ))}
-                <button type="submit" className="primary">
-                  <Send size={17} aria-hidden="true" />
-                  {currentRecord && attempt.mode === 'MOCK' ? '更新答案' : '提交答案'}
-                </button>
-              </form>
+              <QuestionAnswerForm
+                action={submitAnswerAction}
+                attemptId={attempt.id}
+                currentAnswer={currentRecord?.userAnswer}
+                options={options}
+                questionId={question.id}
+                questionType={question.type}
+                submitLabel={currentRecord && attempt.mode === 'MOCK' ? '更新答案' : '提交答案'}
+              />
             )}
           </section>
 

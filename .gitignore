@@ -63,3 +63,7 @@ next-env.d.ts
 
 # Local visual review artifacts
 .superpowers/
+
+# Local browser automation runtime
+.agent-browser-profile/
+dogfood-output/*.mjs

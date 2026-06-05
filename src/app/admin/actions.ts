@@ -18,6 +18,7 @@ import {
   resolveQuestionImageUpdateFromFormData,
 } from '@/lib/question-images';
 import { JUDGE_OPTIONS, validateQuestionPayload, type QuestionOption } from '@/lib/question-validate';
+import { redirectMessagePath } from '@/lib/redirect-message';
 import { requireUser } from '@/lib/server-session';
 
 const OPTION_KEYS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
@@ -26,7 +27,7 @@ export async function createBankAction(formData: FormData): Promise<void> {
   requireUser('bank:write');
   const code = text(formData, 'code');
   const name = text(formData, 'name');
-  if (!code || !name) redirect('/admin/banks?error=请填写题库编码和名称');
+  if (!code || !name) redirect(redirectMessagePath('/admin/banks', 'error', '请填写题库编码和名称'));
 
   await prisma.questionBank.upsert({
     where: { code },
@@ -35,7 +36,7 @@ export async function createBankAction(formData: FormData): Promise<void> {
   });
   revalidatePath('/admin/banks');
   revalidatePath('/exam');
-  redirect('/admin/banks?notice=题库已保存');
+  redirect(redirectMessagePath('/admin/banks', 'notice', '题库已保存'));
 }
 
 export async function deleteBankAction(formData: FormData): Promise<void> {
@@ -45,47 +46,47 @@ export async function deleteBankAction(formData: FormData): Promise<void> {
     where: { id },
     include: { _count: { select: { questions: true } } },
   });
-  if (!bank) redirect('/admin/banks?error=题库不存在');
-  if (bank.isBuiltin) redirect('/admin/banks?error=内置题库不可删除');
+  if (!bank) redirect(redirectMessagePath('/admin/banks', 'error', '题库不存在'));
+  if (bank.isBuiltin) redirect(redirectMessagePath('/admin/banks', 'error', '内置题库不可删除'));
   if (bank._count.questions > 0) {
-    redirect('/admin/banks?error=题库下尚有题目，无法删除');
+    redirect(redirectMessagePath('/admin/banks', 'error', '题库下尚有题目，无法删除'));
   }
 
   await prisma.questionBank.delete({ where: { id } });
   revalidatePath('/admin/banks');
-  redirect('/admin/banks?notice=题库已删除');
+  redirect(redirectMessagePath('/admin/banks', 'notice', '题库已删除'));
 }
 
 export async function createCategoryAction(formData: FormData): Promise<void> {
   requireUser('category:write');
   const name = text(formData, 'name');
   const parentId = nullableText(formData, 'parentId');
-  if (!name) redirect('/admin/categories?error=请填写分类名称');
+  if (!name) redirect(redirectMessagePath('/admin/categories', 'error', '请填写分类名称'));
 
   try {
     const existing = await prisma.category.findFirst({ where: { name, parentId } });
-    if (existing) redirect('/admin/categories?error=同级分类名重复');
+    if (existing) redirect(redirectMessagePath('/admin/categories', 'error', '同级分类名重复'));
     await prisma.category.create({ data: { name, parentId } });
   } catch {
-    redirect('/admin/categories?error=同级分类名重复');
+    redirect(redirectMessagePath('/admin/categories', 'error', '同级分类名重复'));
   }
   revalidatePath('/admin/categories');
   revalidatePath('/exam');
-  redirect('/admin/categories?notice=分类已创建');
+  redirect(redirectMessagePath('/admin/categories', 'notice', '分类已创建'));
 }
 
 export async function deleteCategoryAction(formData: FormData): Promise<void> {
   requireUser('category:delete');
   const id = text(formData, 'id');
   const childCount = await prisma.category.count({ where: { parentId: id } });
-  if (childCount > 0) redirect('/admin/categories?error=请先删除子分类');
+  if (childCount > 0) redirect(redirectMessagePath('/admin/categories', 'error', '请先删除子分类'));
 
   await prisma.$transaction([
     prisma.questionCategory.deleteMany({ where: { categoryId: id } }),
     prisma.category.delete({ where: { id } }),
   ]);
   revalidatePath('/admin/categories');
-  redirect('/admin/categories?notice=分类已删除');
+  redirect(redirectMessagePath('/admin/categories', 'notice', '分类已删除'));
 }
 
 export async function createQuestionAction(formData: FormData): Promise<void> {
@@ -255,11 +256,11 @@ export async function deleteQuestionAction(formData: FormData): Promise<void> {
 
 export async function updateRolePermissionsAction(formData: FormData): Promise<void> {
   const user = requireUser('role:edit-permissions');
-  if (user.roleCode !== 'super_admin') redirect('/admin/roles?error=只有超级管理员可编辑权限');
+  if (user.roleCode !== 'super_admin') redirect(redirectMessagePath('/admin/roles', 'error', '只有超级管理员可编辑权限'));
 
   const roleId = text(formData, 'roleId');
   const role = await prisma.role.findUnique({ where: { id: roleId } });
-  if (!role || role.code === 'super_admin') redirect('/admin/roles?error=该角色不可编辑');
+  if (!role || role.code === 'super_admin') redirect(redirectMessagePath('/admin/roles', 'error', '该角色不可编辑'));
 
   const permissionIds = unique(formData.getAll('permissionIds').map(String).filter(Boolean));
   await prisma.$transaction([
@@ -273,7 +274,7 @@ export async function updateRolePermissionsAction(formData: FormData): Promise<v
       : []),
   ]);
   revalidatePath('/admin/roles');
-  redirect('/admin/roles?notice=权限已保存，用户下次登录后生效');
+  redirect(redirectMessagePath('/admin/roles', 'notice', '权限已保存，用户下次登录后生效'));
 }
 
 export async function createUserAction(formData: FormData): Promise<void> {
@@ -282,15 +283,15 @@ export async function createUserAction(formData: FormData): Promise<void> {
   const name = nullableText(formData, 'name');
   const roleId = text(formData, 'roleId');
   const password = text(formData, 'password') || 'User@123456';
-  if (!username || !roleId) redirect('/admin/users?error=请填写用户名和角色');
+  if (!username || !roleId) redirect(redirectMessagePath('/admin/users', 'error', '请填写用户名和角色'));
 
   const role = await prisma.role.findUnique({
     where: { id: roleId },
     select: { code: true },
   });
-  if (!role) redirect('/admin/users?error=角色无效');
+  if (!role) redirect(redirectMessagePath('/admin/users', 'error', '角色无效'));
   if (!canAssignRole({ actorRoleCode: actor.roleCode, targetRoleCode: role.code })) {
-    redirect('/admin/users?error=只有超级管理员可创建超级管理员账号');
+    redirect(redirectMessagePath('/admin/users', 'error', '只有超级管理员可创建超级管理员账号'));
   }
 
   try {
@@ -304,26 +305,26 @@ export async function createUserAction(formData: FormData): Promise<void> {
       },
     });
   } catch {
-    redirect('/admin/users?error=用户名已存在或角色无效');
+    redirect(redirectMessagePath('/admin/users', 'error', '用户名已存在或角色无效'));
   }
 
   revalidatePath('/admin/users');
-  redirect('/admin/users?notice=用户已创建，默认密码已写入');
+  redirect(redirectMessagePath('/admin/users', 'notice', '用户已创建，默认密码已写入'));
 }
 
 export async function setUserStatusAction(formData: FormData): Promise<void> {
   const actor = requireUser('user:unfreeze');
   const id = text(formData, 'id');
   const status = readUserStatus(text(formData, 'status'));
-  if (!status) redirect('/admin/users?error=状态不合法');
+  if (!status) redirect(redirectMessagePath('/admin/users', 'error', '状态不合法'));
 
   const target = await prisma.user.findUnique({
     where: { id },
     include: { role: { select: { code: true } } },
   });
-  if (!target) redirect('/admin/users?error=用户不存在');
+  if (!target) redirect(redirectMessagePath('/admin/users', 'error', '用户不存在'));
   if (!canManageUserRole({ actorRoleCode: actor.roleCode, targetRoleCode: target.role.code })) {
-    redirect('/admin/users?error=只有超级管理员可管理超级管理员账号');
+    redirect(redirectMessagePath('/admin/users', 'error', '只有超级管理员可管理超级管理员账号'));
   }
 
   await prisma.user.update({
@@ -331,7 +332,7 @@ export async function setUserStatusAction(formData: FormData): Promise<void> {
     data: buildStatusUpdateData(target.status, status),
   });
   revalidatePath('/admin/users');
-  redirect('/admin/users?notice=用户状态已更新');
+  redirect(redirectMessagePath('/admin/users', 'notice', '用户状态已更新'));
 }
 
 export async function resetUserPasswordAction(formData: FormData): Promise<void> {
@@ -342,16 +343,16 @@ export async function resetUserPasswordAction(formData: FormData): Promise<void>
     where: { id },
     include: { role: { select: { code: true } } },
   });
-  if (!target) redirect('/admin/users?error=用户不存在');
+  if (!target) redirect(redirectMessagePath('/admin/users', 'error', '用户不存在'));
   if (!canManageUserRole({ actorRoleCode: actor.roleCode, targetRoleCode: target.role.code })) {
-    redirect('/admin/users?error=只有超级管理员可管理超级管理员账号');
+    redirect(redirectMessagePath('/admin/users', 'error', '只有超级管理员可管理超级管理员账号'));
   }
   await prisma.user.update({
     where: { id },
     data: { passwordHash: await bcrypt.hash(password, 10) },
   });
   revalidatePath('/admin/users');
-  redirect('/admin/users?notice=密码已重置');
+  redirect(redirectMessagePath('/admin/users', 'notice', '密码已重置'));
 }
 
 function text(formData: FormData, key: string): string {

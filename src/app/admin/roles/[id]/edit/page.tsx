@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { updateRolePermissionsAction } from '@/app/admin/actions';
 import { prisma } from '@/lib/db';
+import { redirectMessagePath } from '@/lib/redirect-message';
 import { requireUser } from '@/lib/server-session';
 
 type EditRolePageProps = {
@@ -12,7 +13,7 @@ type EditRolePageProps = {
 
 export default async function EditRolePage({ params }: EditRolePageProps) {
   const user = requireUser('role:edit-permissions');
-  if (user.roleCode !== 'super_admin') redirect('/admin/roles?error=只有超级管理员可编辑权限');
+  if (user.roleCode !== 'super_admin') redirect(redirectMessagePath('/admin/roles', 'error', '只有超级管理员可编辑权限'));
 
   const [role, permissions] = await Promise.all([
     prisma.role.findUnique({
@@ -22,7 +23,7 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
     prisma.permission.findMany({ orderBy: [{ group: 'asc' }, { code: 'asc' }] }),
   ]);
   if (!role) notFound();
-  if (role.code === 'super_admin') redirect('/admin/roles?error=超级管理员角色不可编辑');
+  if (role.code === 'super_admin') redirect(redirectMessagePath('/admin/roles', 'error', '超级管理员角色不可编辑'));
 
   const selected = new Set(role.permissions.map((item) => item.permissionId));
   const groups = groupPermissions(permissions);

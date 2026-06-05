@@ -12,6 +12,7 @@ import { getMockConfig } from '@/lib/exam-engine/mock-config';
 import { resolveSubmittedQuestion } from '@/lib/exam-engine/submission-guard';
 import { parseOrder, serializeCategoryIds, serializeOrder } from '@/lib/exam-engine/snapshot';
 import { hasPermission } from '@/lib/permissions';
+import { redirectMessagePath } from '@/lib/redirect-message';
 import { requireUser } from '@/lib/server-session';
 
 export async function startSessionAction(formData: FormData): Promise<void> {
@@ -23,14 +24,14 @@ export async function startSessionAction(formData: FormData): Promise<void> {
     .map(String)
     .filter(Boolean);
 
-  if (!EXAM_MODES.includes(mode)) redirect('/exam?error=未知练习模式');
-  if (mode !== 'WRONG_REVIEW' && !bankId) redirect('/exam?error=请选择题库');
+  if (!EXAM_MODES.includes(mode)) redirect(redirectMessagePath('/exam', 'error', '未知练习模式'));
+  if (mode !== 'WRONG_REVIEW' && !bankId) redirect(redirectMessagePath('/exam', 'error', '请选择题库'));
   if (mode === 'CHAPTER' && categoryIds.length === 0) {
-    redirect('/exam?error=章节练习至少选择一个分类');
+    redirect(redirectMessagePath('/exam', 'error', '章节练习至少选择一个分类'));
   }
 
   const permission = mode === 'MOCK' ? 'exam:mock' : 'exam:practice';
-  if (!hasPermission({ user }, permission)) redirect('/exam?error=没有练习权限');
+  if (!hasPermission({ user }, permission)) redirect(redirectMessagePath('/exam', 'error', '没有练习权限'));
 
   const existing = await prisma.examAttempt.findFirst({
     where: {
@@ -47,7 +48,7 @@ export async function startSessionAction(formData: FormData): Promise<void> {
     mode === 'WRONG_REVIEW'
       ? null
       : await prisma.questionBank.findUnique({ where: { id: bankId } });
-  if (mode !== 'WRONG_REVIEW' && !bank) redirect('/exam?error=题库不存在');
+  if (mode !== 'WRONG_REVIEW' && !bank) redirect(redirectMessagePath('/exam', 'error', '题库不存在'));
 
   const loadResult = await loadQuestionsForMode(
     prisma,
@@ -109,7 +110,7 @@ export async function submitAnswerAction(formData: FormData): Promise<void> {
   const order = parseOrder(attempt.questionOrder);
   const submittedQuestion = resolveSubmittedQuestion(order, questionId);
   if (!submittedQuestion.ok) {
-    redirect(`/exam/session/${attempt.id}?error=题目不属于本次会话`);
+    redirect(redirectMessagePath(`/exam/session/${attempt.id}`, 'error', '题目不属于本次会话'));
   }
 
   const question = await prisma.question.findUnique({ where: { id: questionId } });
@@ -243,7 +244,7 @@ export async function toggleMasteredAction(formData: FormData): Promise<void> {
   const wrong = await prisma.wrongQuestion.findFirst({
     where: { id: wrongId, userId: user.id },
   });
-  if (!wrong) redirect('/exam/wrong?error=无权操作');
+  if (!wrong) redirect(redirectMessagePath('/exam/wrong', 'error', '无权操作'));
 
   await prisma.wrongQuestion.update({
     where: { id: wrong.id },
