@@ -59,25 +59,32 @@ export async function commitImportRows(
     const bankCache = new Map<string, string | null>();
 
     for (const row of rows) {
-      const bankId = await resolveBankId(tx, row, options, bankCache);
-      if (!bankId) {
-        skippedCount++;
-        continue;
-      }
+ const bankId = await resolveBankId(tx, row, options, bankCache);
+ if (!bankId) {
+ skippedCount++;
+ continue;
+ }
+ if (await hasImportedSourceQuestion(tx, bankId, row)) {
+ skippedCount++;
+ continue;
+ }
 
-      const question = await tx.question.create({
-        data: {
-          bankId,
+ const question = await tx.question.create({
+ data: {
+ bankId,
           type: row.type,
           content: row.content,
           imageUrl: row.imageUrl ?? null,
           options: JSON.stringify(optionsForRow(row)),
-          answer: row.answer,
-          explanation: row.explanation ?? null,
-          tags: JSON.stringify(row.tags),
-        },
-        select: { id: true },
-      });
+ answer: row.answer,
+ explanation: row.explanation ?? null,
+ tags: JSON.stringify(row.tags),
+ sourceSite: row.sourceSite ?? null,
+ sourceQuestionId: row.sourceQuestionId ?? null,
+ sourceMeta: row.sourceMeta ?? null,
+ },
+ select: { id: true },
+ });
 
       const categoryIds = await resolveCategoryIds(tx, row.categories);
       if (categoryIds.length > 0) {
@@ -96,9 +103,26 @@ export async function commitImportRows(
   return { ok: true, insertedCount, skippedCount };
 }
 
+async function hasImportedSourceQuestion(
+ tx: Prisma.TransactionClient,
+ bankId: string,
+ row: ImportRow,
+): Promise<boolean> {
+ if (!row.sourceSite || !row.sourceQuestionId) return false;
+ const existing = await tx.question.findFirst({
+ where: {
+ bankId,
+ sourceSite: row.sourceSite,
+ sourceQuestionId: row.sourceQuestionId,
+ },
+ select: { id: true },
+ });
+ return Boolean(existing);
+}
+
 async function resolveBankId(
-  tx: Prisma.TransactionClient,
-  row: ImportRow,
+ tx: Prisma.TransactionClient,
+ row: ImportRow,
   options: CommitOptions,
   cache: Map<string, string | null>,
 ): Promise<string | null> {

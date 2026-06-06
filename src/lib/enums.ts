@@ -32,6 +32,7 @@ export const EXAM_MODES = [
   'SEQUENTIAL',
   'RANDOM',
   'CHAPTER',
+  'CHAPTER_RANDOM',
   'MOCK',
   'WRONG_REVIEW',
 ] as const;

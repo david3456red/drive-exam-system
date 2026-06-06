@@ -2,7 +2,6 @@ import Link from 'next/link';
 import {
   BookOpenCheck,
   ClipboardList,
-  FolderTree,
   Gauge,
   History,
   ListChecks,
@@ -14,146 +13,274 @@ import { startSessionAction, adoptExpiredMockForCurrentUser } from './actions';
 import { OngoingAttemptActions } from './ongoing-attempt-actions';
 import { prisma } from '@/lib/db';
 import { EXAM_MODE_LABEL } from '@/lib/display';
+import {
+  SUBJECT_LABELS,
+  VEHICLE_LABELS,
+  WORKBENCH_VEHICLE_CODES,
+ buildExamWorkbench,
+ defaultSubjectCode,
+ defaultVehicleCode,
+} from '@/lib/exam-workbench';
 import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
 
-const MODES = ['SEQUENTIAL', 'RANDOM', 'CHAPTER', 'MOCK', 'WRONG_REVIEW'] as const;
-const MODE_ICON = {
-  SEQUENTIAL: ListChecks,
-  RANDOM: Shuffle,
-  CHAPTER: FolderTree,
-  MOCK: Gauge,
-  WRONG_REVIEW: ClipboardList,
-} as const;
-
 type ExamPageProps = {
-  searchParams?: { error?: string };
+  searchParams?: { error?: string; vehicle?: string; subject?: string };
+};
+
+type CategoryRow = {
+  id: string;
+  name: string;
+  count: number;
 };
 
 export default async function ExamPage({ searchParams }: ExamPageProps) {
   const user = requireUser('exam:practice');
   await adoptExpiredMockForCurrentUser();
 
-  const [banks, categories, ongoing] = await Promise.all([
+  const [banks, ongoing] = await Promise.all([
     prisma.questionBank.findMany({
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
       include: { _count: { select: { questions: true } } },
     }),
-    prisma.category.findMany({ orderBy: [{ parentId: 'asc' }, { createdAt: 'asc' }] }),
     prisma.examAttempt.findMany({
       where: { userId: user.id, status: 'ONGOING' },
       select: { id: true, bankId: true, mode: true },
     }),
   ]);
 
+ const workbench = buildExamWorkbench(banks);
+ const requestedVehicle = searchParams?.vehicle;
+ const requestedSubject = searchParams?.subject;
+ const vehicleCode =
+ requestedVehicle && WORKBENCH_VEHICLE_CODES.includes(requestedVehicle as (typeof WORKBENCH_VEHICLE_CODES)[number])
+ ? requestedVehicle
+ : defaultVehicleCode(workbench);
+  const vehicle = workbench.find((item) => item.code === vehicleCode);
+  const subjectCode =
+    requestedSubject && vehicle?.subjects.some((item) => item.code === requestedSubject)
+      ? requestedSubject
+      : defaultSubjectCode(vehicle);
+  const subject = vehicle?.subjects.find((item) => item.code === subjectCode);
+  const selectedBank = subject?.bank;
+  const categories = selectedBank ? await loadCategoryRows(selectedBank.id) : [];
   const ongoingKey = new Map(
     ongoing.map((attempt) => [`${attempt.bankId ?? 'wrong'}:${attempt.mode}`, attempt.id]),
   );
   const canMock = hasPermission({ user }, 'exam:mock');
 
   return (
-    <main className="page stack">
+    <main className="page stack exam-workbench">
       <div className="page-title">
         <span className="badge good">
           <BookOpenCheck size={15} aria-hidden="true" />
-          学员前台
+          学员训练台
         </span>
-        <h1>开始练习</h1>
-        <p>选择题库和练习模式。进行中的会话会优先恢复，模拟考试离场后会自动兜底结算。</p>
+        <h1>按车型和科目练题</h1>
+        <p>先选车型，再选科目或专项；章节内可顺序练习或随机练习，模拟考试和错题复盘固定在右侧。</p>
       </div>
       {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
-      <div className="cluster">
-        <Link className="button" href="/exam/wrong">
-          <ClipboardList size={17} aria-hidden="true" />
-          错题本
-        </Link>
-        <Link className="button" href="/exam/history">
-          <History size={17} aria-hidden="true" />
-          答题记录
-        </Link>
-      </div>
-      <section className="grid">
-        {banks.map((bank) => (
-          <article className="card stack" key={bank.id}>
-            <div>
-              <span className="badge">
-                <BookOpenCheck size={15} aria-hidden="true" />
-                {bank.code}
+
+      <section className="panel stack">
+        <div className="segmented" aria-label="车型">
+          {WORKBENCH_VEHICLE_CODES.map((code) => {
+            const available = workbench.some((item) => item.code === code);
+            const active = code === vehicleCode;
+            return available ? (
+              <Link
+                className={active ? 'segment active' : 'segment'}
+                href={`/exam?vehicle=${code}`}
+                key={code}
+              >
+                {VEHICLE_LABELS[code]}
+              </Link>
+            ) : (
+              <span className="segment disabled" key={code}>
+                {VEHICLE_LABELS[code]} · 待导入
               </span>
-              <h2>{bank.name}</h2>
-              <p className="muted">当前题量：{bank._count.questions}</p>
-            </div>
-            <div className="stack">
-              {MODES.filter((mode) => mode !== 'WRONG_REVIEW').map((mode) => {
-                const attemptId = ongoingKey.get(`${bank.id}:${mode}`);
-                if (mode === 'MOCK' && !canMock) return null;
-                const ModeIcon = MODE_ICON[mode];
-                return (
-                  <div className="cluster" key={mode}>
-                    {attemptId ? (
-                      <OngoingAttemptActions attemptId={attemptId} label={EXAM_MODE_LABEL[mode]} />
-                    ) : (
-                      <form action={startSessionAction} className="stack" style={{ width: '100%' }}>
-                        <input type="hidden" name="bankId" value={bank.id} />
-                        <input type="hidden" name="mode" value={mode} />
-                        {mode === 'CHAPTER' ? (
-                          <div className="field">
-                            <label>章节分类</label>
-                            <div className="cluster">
-                              {categories.length === 0 ? (
-                                <span className="muted">暂无分类，可先在后台添加</span>
-                              ) : (
-                                categories.map((category) => (
-                                  <label className="badge" key={category.id}>
-                                    <input
-                                      type="checkbox"
-                                      name="categoryIds"
-                                      value={category.id}
-                                    />{' '}
-                                    {category.name}
-                                  </label>
-                                ))
-                              )}
-                            </div>
+            );
+          })}
+        </div>
+
+        {vehicle ? (
+          <div className="segmented" aria-label="科目">
+            {vehicle.subjects.map((item) => (
+              <Link
+                className={item.code === subjectCode ? 'segment active' : 'segment'}
+                href={`/exam?vehicle=${vehicle.code}&subject=${item.code}`}
+                key={item.code}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <div className="exam-workbench-layout">
+        <section className="panel stack">
+          {selectedBank ? (
+            <>
+              <div className="cluster">
+                <span className="badge">
+                  <BookOpenCheck size={15} aria-hidden="true" />
+                  {selectedBank.name}
+                </span>
+                <span className="badge good">{selectedBank._count.questions} 题</span>
+              </div>
+
+              <div className="cluster">
+                {(['SEQUENTIAL', 'RANDOM'] as const).map((mode) => {
+                  const attemptId = ongoingKey.get(`${selectedBank.id}:${mode}`);
+                  const Icon = mode === 'SEQUENTIAL' ? ListChecks : Shuffle;
+                  return attemptId ? (
+                    <OngoingAttemptActions attemptId={attemptId} label={EXAM_MODE_LABEL[mode]} key={mode} />
+                  ) : (
+                    <form action={startSessionAction} key={mode}>
+                      <input type="hidden" name="bankId" value={selectedBank.id} />
+                      <input type="hidden" name="mode" value={mode} />
+                      <button type="submit">
+                        <Icon size={17} aria-hidden="true" />
+                        整库{EXAM_MODE_LABEL[mode]}
+                      </button>
+                    </form>
+                  );
+                })}
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>章节</th>
+                      <th>题量</th>
+                      <th>练习</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((category) => (
+                      <tr key={category.id}>
+                        <td>{category.name}</td>
+                        <td>{category.count}</td>
+                        <td>
+                          <div className="cluster">
+                            <ChapterStartForm
+                              bankId={selectedBank.id}
+                              categoryId={category.id}
+                              label="顺序"
+                              mode="CHAPTER"
+                            />
+                            <ChapterStartForm
+                              bankId={selectedBank.id}
+                              categoryId={category.id}
+                              label="随机"
+                              mode="CHAPTER_RANDOM"
+                            />
                           </div>
-                        ) : null}
-                        <button className={mode === 'MOCK' ? 'danger' : 'primary'} type="submit">
-                          <ModeIcon size={17} aria-hidden="true" />
-                          {EXAM_MODE_LABEL[mode]}
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </article>
-        ))}
-        <article className="card stack">
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {categories.length === 0 ? <div className="empty">暂无章节分类，可先导入题库。</div> : null}
+              </div>
+            </>
+          ) : (
+            <div className="empty">该车型暂未导入题库。</div>
+          )}
+        </section>
+
+        <aside className="panel stack exam-workbench-side">
           <div>
             <span className="badge warn">
-              <ClipboardList size={15} aria-hidden="true" />
-              错题
+              <Gauge size={15} aria-hidden="true" />
+              考试与记录
             </span>
-            <h2>{EXAM_MODE_LABEL.WRONG_REVIEW}</h2>
-            <p className="muted">按最近答错时间倒序抽取未掌握错题。</p>
+            <h2>{selectedBank ? SUBJECT_LABELS[selectedBank.subjectCode ?? ''] ?? selectedBank.name : '待选择题库'}</h2>
           </div>
+
+          {selectedBank && canMock ? (
+            ongoingKey.get(`${selectedBank.id}:MOCK`) ? (
+              <OngoingAttemptActions
+                attemptId={ongoingKey.get(`${selectedBank.id}:MOCK`)!}
+                label={EXAM_MODE_LABEL.MOCK}
+              />
+            ) : (
+              <form action={startSessionAction}>
+                <input type="hidden" name="bankId" value={selectedBank.id} />
+                <input type="hidden" name="mode" value="MOCK" />
+                <button className="danger" type="submit">
+                  <Gauge size={17} aria-hidden="true" />
+                  模拟考试
+                </button>
+              </form>
+            )
+          ) : null}
+
           {ongoingKey.get('wrong:WRONG_REVIEW') ? (
-            <OngoingAttemptActions
-              attemptId={ongoingKey.get('wrong:WRONG_REVIEW')!}
-              label="错题重做"
-            />
+            <OngoingAttemptActions attemptId={ongoingKey.get('wrong:WRONG_REVIEW')!} label="错题重做" />
           ) : (
             <form action={startSessionAction}>
               <input type="hidden" name="mode" value="WRONG_REVIEW" />
-              <button className="primary" type="submit">
+              <button type="submit">
                 <PlayCircle size={17} aria-hidden="true" />
-                开始错题重做
+                错题重做
               </button>
             </form>
           )}
-        </article>
-      </section>
+
+          <Link className="button" href="/exam/wrong">
+            <ClipboardList size={17} aria-hidden="true" />
+            错题集
+          </Link>
+          <Link className="button" href="/exam/history">
+            <History size={17} aria-hidden="true" />
+            成绩单
+          </Link>
+        </aside>
+      </div>
     </main>
   );
+}
+
+function ChapterStartForm({
+  bankId,
+  categoryId,
+  label,
+  mode,
+}: {
+  bankId: string;
+  categoryId: string;
+  label: string;
+  mode: 'CHAPTER' | 'CHAPTER_RANDOM';
+}) {
+  return (
+    <form action={startSessionAction}>
+      <input type="hidden" name="bankId" value={bankId} />
+      <input type="hidden" name="mode" value={mode} />
+      <input type="hidden" name="categoryIds" value={categoryId} />
+      <button type="submit">{label}</button>
+    </form>
+  );
+}
+
+async function loadCategoryRows(bankId: string): Promise<CategoryRow[]> {
+  const rows = await prisma.questionCategory.findMany({
+    where: { question: { bankId } },
+    include: { category: true },
+  });
+  const byId = new Map<string, CategoryRow>();
+  for (const row of rows) {
+    const existing = byId.get(row.categoryId);
+    if (existing) {
+      existing.count++;
+    } else {
+      byId.set(row.categoryId, {
+        id: row.categoryId,
+        name: row.category.name,
+        count: 1,
+      });
+    }
+  }
+  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
 }

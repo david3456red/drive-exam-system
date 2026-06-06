@@ -10,7 +10,8 @@ import {
   FolderTree,
   Pencil,
   Search,
-  Upload,
+ Upload,
+ DownloadCloud,
 } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
@@ -72,11 +73,15 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
             <FilePlus2 size={17} aria-hidden="true" />
             新建题目
           </Link>
-          <Link className="button" href="/admin/questions/import">
-            <Upload size={17} aria-hidden="true" />
-            批量导入
-          </Link>
-          <Link className="button" href="/admin/categories">
+ <Link className="button" href="/admin/questions/import">
+ <Upload size={17} aria-hidden="true" />
+ 批量导入
+ </Link>
+ <Link className="button" href="/admin/questions/import/wukong">
+ <DownloadCloud size={17} aria-hidden="true" />
+ 悟空迁移
+ </Link>
+ <Link className="button" href="/admin/categories">
             <FolderTree size={17} aria-hidden="true" />
             分类管理
           </Link>

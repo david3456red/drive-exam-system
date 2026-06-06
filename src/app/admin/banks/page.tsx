@@ -30,7 +30,7 @@ export default async function BanksPage({ searchParams }: BanksPageProps) {
               <BookMarked size={15} aria-hidden="true" />
               题库编码
             </label>
-            <input id="code" name="code" placeholder="subject_1" required />
+            <input id="code" name="code" placeholder="C1_K1" required />
           </div>
           <div className="field">
             <label htmlFor="name">

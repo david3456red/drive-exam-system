@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, Inbox } from 'lucide-react';
+import { ArrowLeft, DownloadCloud, Inbox } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
 import { requireUser } from '@/lib/server-session';
@@ -19,9 +19,13 @@ export default async function QuestionImportPage() {
           <ArrowLeft size={17} aria-hidden="true" />
           返回题目
         </Link>
-        <h1>批量导入</h1>
-        <p>先预览行级校验结果，再确认写入题库。</p>
-      </div>
+ <h1>批量导入</h1>
+ <p>先预览行级校验结果，再确认写入题库。</p>
+ <Link className="button" href="/admin/questions/import/wukong">
+ <DownloadCloud size={17} aria-hidden="true" />
+ 悟空交规迁移
+ </Link>
+ </div>
       {banks.length === 0 ? (
         <div className="empty">
           <Inbox size={18} aria-hidden="true" />

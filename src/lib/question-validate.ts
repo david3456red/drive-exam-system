@@ -127,6 +127,9 @@ export const ImportRowSchema = z.object({
   explanation: OptionalStringSchema,
   tags: z.array(z.string()).default([]),
   bankCode: OptionalStringSchema,
+  sourceSite: OptionalStringSchema,
+  sourceQuestionId: OptionalStringSchema,
+  sourceMeta: OptionalStringSchema,
 });
 
 /** `ImportRowSchema` 解析后的 TS 类型(选项列以 `optionA..optionF` 形式存在)。 */

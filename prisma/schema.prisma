@@ -92,14 +92,25 @@ model LoginLog {
 // ========== 题库 / 分类 / 题目 ==========
 
 model QuestionBank {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  isBuiltin Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id                String   @id @default(cuid())
+  code              String   @unique
+  name              String
+  isBuiltin         Boolean  @default(false)
+  vehicleCode       String?
+  subjectCode       String?
+  displayOrder      Int      @default(0)
+  mockQuestionCount Int?
+  mockDurationMs    Int?
+  mockPassScore     Int?
+  sourceSite        String?
+  sourceKey         String?
+  createdAt         DateTime @default(now())
 
   questions Question[]
   attempts  ExamAttempt[]
+
+  @@unique([sourceSite, sourceKey])
+  @@index([vehicleCode, subjectCode, displayOrder])
 }
 
 model Category {
@@ -116,24 +127,29 @@ model Category {
 }
 
 model Question {
-  id          String       @id @default(cuid())
-  bankId      String
-  bank        QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  id               String       @id @default(cuid())
+  bankId           String
+  bank             QuestionBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
   /// QuestionType: SINGLE | MULTI | JUDGE
-  type        String
-  content     String
-  imageUrl    String?
-  options     String       // JSON: [{ key, text }, ...]
-  answer      String       // 'B' / 'AC' / 'T' / 'F'
-  explanation String?
-  tags        String       // JSON: string[]
-  createdAt   DateTime     @default(now())
+  type             String
+  content          String
+  imageUrl         String?
+  options          String // JSON: [{ key, text }, ...]
+  answer           String // 'B' / 'AC' / 'T' / 'F'
+  explanation      String?
+  sourceSite       String?
+  sourceQuestionId String?
+  sourceMeta       String?
+  tags             String // JSON: string[]
+  createdAt        DateTime     @default(now())
 
   categories QuestionCategory[]
   records    ExamRecord[]
   wrongs     WrongQuestion[]
 
+  @@unique([bankId, sourceSite, sourceQuestionId])
   @@index([bankId, createdAt])
+  @@index([sourceSite, sourceQuestionId])
 }
 
 model QuestionCategory {
@@ -157,10 +173,10 @@ model ExamAttempt {
   mode          String
   /// ExamStatus: ONGOING | FINISHED | ABANDONED
   status        String        @default("ONGOING")
-  questionOrder String        // JSON: string[](快照,会话生命周期不可变)
+  questionOrder String // JSON: string[](快照,会话生命周期不可变)
   currentIndex  Int           @default(0)
-  categoryIds   String        // JSON: string[](CHAPTER 用;其它模式 "[]")
-  expiresAt     DateTime?     // 仅 MOCK
+  categoryIds   String // JSON: string[](CHAPTER 用;其它模式 "[]")
+  expiresAt     DateTime? // 仅 MOCK
   startedAt     DateTime      @default(now())
   finishedAt    DateTime?
   totalCount    Int?
@@ -180,9 +196,9 @@ model ExamRecord {
   attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   questionId String
   question   Question    @relation(fields: [questionId], references: [id])
-  userAnswer String      // 已 normalize
+  userAnswer String // 已 normalize
   isCorrect  Boolean
-  costMs     Int         // 已 clamp 到 [0, 3_600_000]
+  costMs     Int // 已 clamp 到 [0, 3_600_000]
   createdAt  DateTime    @default(now())
 
   @@unique([attemptId, questionId])

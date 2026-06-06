@@ -152,6 +152,9 @@ export function validateRow(row: unknown, rowIndex: number): ValidateRowResult {
     explanation: r.explanation ?? undefined,
     tags: r.tags,
     bankCode: r.bankCode ?? undefined,
+    sourceSite: r.sourceSite ?? undefined,
+    sourceQuestionId: r.sourceQuestionId ?? undefined,
+    sourceMeta: r.sourceMeta ?? undefined,
   };
   return { ok: true, data };
 }

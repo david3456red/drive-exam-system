@@ -154,7 +154,7 @@ describe('commitImport', () => {
     expect(question.bankId).toBe(bankId);
   });
 
-  it('commits prepared image rows with generated public upload URLs', async () => {
+ it('commits prepared image rows with generated public upload URLs', async () => {
     const prepared = await prepareImportRowsWithImages(
       jsonSource,
       [
@@ -183,6 +183,46 @@ describe('commitImport', () => {
 
     expect(result).toEqual({ ok: true, insertedCount: 1, skippedCount: 0 });
     const question = await prisma.question.findFirstOrThrow();
-    expect(question.imageUrl).toBe('/uploads/questions/integration-image.png');
-  });
+ expect(question.imageUrl).toBe('/uploads/questions/integration-image.png');
+ });
+
+ it('skips rows already imported from the same source within the target bank', async () => {
+ await prisma.question.create({
+ data: {
+ bankId,
+ type: 'SINGLE',
+ content: 'existing source question',
+ imageUrl: null,
+ options: JSON.stringify([
+ { key: 'A', text: 'wrong' },
+ { key: 'B', text: 'right' },
+ ]),
+ answer: 'B',
+ explanation: null,
+ tags: JSON.stringify([]),
+ sourceSite: 'wukong',
+ sourceQuestionId: '6922',
+ sourceMeta: JSON.stringify({ sourceKey: 'C1:K1:21:113' }),
+ },
+ });
+
+ const result = await commitImportRows(prisma, [
+ {
+ type: 'SINGLE',
+ content: 'incoming duplicate',
+ optionA: 'wrong',
+ optionB: 'right',
+ answer: 'B',
+ categories: [],
+ tags: [],
+ bankCode,
+ sourceSite: 'wukong',
+ sourceQuestionId: '6922',
+ sourceMeta: JSON.stringify({ sourceKey: 'C1:K1:21:113' }),
+ },
+ ], { bankId });
+
+ expect(result).toEqual({ ok: true, insertedCount: 0, skippedCount: 1 });
+ expect(await prisma.question.count()).toBe(1);
+ });
 });

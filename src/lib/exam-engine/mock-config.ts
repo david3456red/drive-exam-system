@@ -23,6 +23,13 @@ export type MockConfig = {
   readonly passScore: number;
 };
 
+export type MockConfigSource = {
+  readonly subjectCode?: string | null;
+  readonly mockQuestionCount?: number | null;
+  readonly mockDurationMs?: number | null;
+  readonly mockPassScore?: number | null;
+};
+
 /**
  * 用于在 `MOCK_CONFIG` 中保存默认配置的内部哨兵键。
  *
@@ -58,6 +65,31 @@ export const MOCK_CONFIG: Readonly<Record<string, MockConfig>> = Object.freeze({
     durationMs: 30 * 60 * 1000,
     passScore: 90,
   }),
+  K1: Object.freeze({
+    count: 100,
+    durationMs: 45 * 60 * 1000,
+    passScore: 90,
+  }),
+  K4: Object.freeze({
+    count: 50,
+    durationMs: 30 * 60 * 1000,
+    passScore: 90,
+  }),
+  MF: Object.freeze({
+    count: 100,
+    durationMs: 45 * 60 * 1000,
+    passScore: 90,
+  }),
+  TS: Object.freeze({
+    count: 100,
+    durationMs: 30 * 60 * 1000,
+    passScore: 90,
+  }),
+  SL: Object.freeze({
+    count: 100,
+    durationMs: 45 * 60 * 1000,
+    passScore: 90,
+  }),
 });
 
 /**
@@ -68,6 +100,11 @@ export const MOCK_CONFIG: Readonly<Record<string, MockConfig>> = Object.freeze({
  * @param bankCode `QuestionBank.code`,例如 `subject_1` / `subject_4`。
  * @returns 该题库的 `MockConfig`,未命中时为默认配置。
  */
-export function getMockConfig(bankCode: string): MockConfig {
-  return MOCK_CONFIG[bankCode] ?? MOCK_CONFIG[DEFAULT_KEY]!;
+export function getMockConfig(bankCode: string, source?: MockConfigSource | null): MockConfig {
+  const fallback = MOCK_CONFIG[source?.subjectCode ?? bankCode] ?? MOCK_CONFIG[bankCode] ?? MOCK_CONFIG[DEFAULT_KEY]!;
+  return {
+    count: source?.mockQuestionCount ?? fallback.count,
+    durationMs: source?.mockDurationMs ?? fallback.durationMs,
+    passScore: source?.mockPassScore ?? fallback.passScore,
+  };
 }

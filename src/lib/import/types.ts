@@ -67,6 +67,9 @@ export interface ImportRow {
   explanation?: string;
   tags: string[];
   bankCode?: string;
+  sourceSite?: string;
+  sourceQuestionId?: string;
+  sourceMeta?: string;
 }
 
 // ============================================================

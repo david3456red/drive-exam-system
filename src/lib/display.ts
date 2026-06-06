@@ -4,6 +4,7 @@ export const EXAM_MODE_LABEL: Record<ExamMode, string> = {
   SEQUENTIAL: '顺序练习',
   RANDOM: '随机练习',
   CHAPTER: '章节练习',
+  CHAPTER_RANDOM: '章节随机',
   MOCK: '模拟考试',
   WRONG_REVIEW: '错题重做',
 };

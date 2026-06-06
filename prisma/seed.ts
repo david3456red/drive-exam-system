@@ -184,11 +184,38 @@ const ROLES: readonly RoleSeed[] = [
 // 3. 内置题库
 // =============================================================================
 
-type BankSeed = { code: string; name: string };
+type BankSeed = {
+  code: string;
+  name: string;
+  vehicleCode: string;
+  subjectCode: string;
+  displayOrder: number;
+  mockQuestionCount: number;
+  mockDurationMs: number;
+  mockPassScore: number;
+};
 
 const BUILTIN_BANKS: readonly BankSeed[] = [
-  { code: 'subject_1', name: '科目一' },
-  { code: 'subject_4', name: '科目四' },
+  {
+    code: 'C1_K1',
+    name: '小车科目一',
+    vehicleCode: 'C1',
+    subjectCode: 'K1',
+    displayOrder: 10,
+    mockQuestionCount: 100,
+    mockDurationMs: 45 * 60 * 1000,
+    mockPassScore: 90,
+  },
+  {
+    code: 'C1_K4',
+    name: '小车科目四',
+    vehicleCode: 'C1',
+    subjectCode: 'K4',
+    displayOrder: 20,
+    mockQuestionCount: 50,
+    mockDurationMs: 30 * 60 * 1000,
+    mockPassScore: 90,
+  },
 ] as const;
 
 const SAMPLE_CATEGORIES = [
@@ -199,8 +226,8 @@ const SAMPLE_CATEGORIES = [
 ] as const;
 
 const SAMPLE_COUNTS: Record<string, number> = {
-  subject_1: 100,
-  subject_4: 50,
+  C1_K1: 100,
+  C1_K4: 50,
 };
 
 // =============================================================================
@@ -289,8 +316,27 @@ async function main() {
   for (const b of BUILTIN_BANKS) {
     await prisma.questionBank.upsert({
       where: { code: b.code },
-      update: { name: b.name, isBuiltin: true }, // Requirement 10.2
-      create: { code: b.code, name: b.name, isBuiltin: true },
+      update: {
+        name: b.name,
+        isBuiltin: true,
+        vehicleCode: b.vehicleCode,
+        subjectCode: b.subjectCode,
+        displayOrder: b.displayOrder,
+        mockQuestionCount: b.mockQuestionCount,
+        mockDurationMs: b.mockDurationMs,
+        mockPassScore: b.mockPassScore,
+      }, // Requirement 10.2
+      create: {
+        code: b.code,
+        name: b.name,
+        isBuiltin: true,
+        vehicleCode: b.vehicleCode,
+        subjectCode: b.subjectCode,
+        displayOrder: b.displayOrder,
+        mockQuestionCount: b.mockQuestionCount,
+        mockDurationMs: b.mockDurationMs,
+        mockPassScore: b.mockPassScore,
+      },
     });
   }
 

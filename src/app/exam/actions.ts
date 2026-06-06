@@ -26,7 +26,7 @@ export async function startSessionAction(formData: FormData): Promise<void> {
 
   if (!EXAM_MODES.includes(mode)) redirect(redirectMessagePath('/exam', 'error', '未知练习模式'));
   if (mode !== 'WRONG_REVIEW' && !bankId) redirect(redirectMessagePath('/exam', 'error', '请选择题库'));
-  if (mode === 'CHAPTER' && categoryIds.length === 0) {
+ if ((mode === 'CHAPTER' || mode === 'CHAPTER_RANDOM') && categoryIds.length === 0) {
     redirect(redirectMessagePath('/exam', 'error', '章节练习至少选择一个分类'));
   }
 
@@ -54,22 +54,22 @@ export async function startSessionAction(formData: FormData): Promise<void> {
     prisma,
     mode === 'WRONG_REVIEW'
       ? { mode, userId: user.id }
-      : mode === 'CHAPTER'
-        ? { mode, bankId, categoryIds }
-        : mode === 'MOCK'
-          ? { mode, bankId, bankCode: bank!.code }
-          : { mode, bankId },
-  );
+ : mode === 'CHAPTER' || mode === 'CHAPTER_RANDOM'
+ ? { mode, bankId, categoryIds }
+ : mode === 'MOCK'
+ ? { mode, bankId, bankCode: bank!.code, mockConfigSource: bank }
+ : { mode, bankId },
+ );
 
   if (!loadResult.ok) {
     redirect(`/exam?error=${encodeURIComponent(loadErrorText(loadResult.error))}`);
   }
 
   const now = new Date();
-  const expiresAt =
-    mode === 'MOCK'
-      ? new Date(now.getTime() + getMockConfig(bank!.code).durationMs)
-      : null;
+ const expiresAt =
+ mode === 'MOCK'
+ ? new Date(now.getTime() + getMockConfig(bank!.code, bank).durationMs)
+ : null;
 
   const attempt = await prisma.examAttempt.create({
     data: {
@@ -79,7 +79,7 @@ export async function startSessionAction(formData: FormData): Promise<void> {
       status: 'ONGOING',
       questionOrder: serializeOrder(loadResult.questionIds),
       currentIndex: 0,
-      categoryIds: mode === 'CHAPTER' ? serializeCategoryIds(categoryIds) : '[]',
+ categoryIds: mode === 'CHAPTER' || mode === 'CHAPTER_RANDOM' ? serializeCategoryIds(categoryIds) : '[]',
       expiresAt,
     },
     select: { id: true },

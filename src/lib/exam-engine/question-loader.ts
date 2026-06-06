@@ -27,7 +27,7 @@ import { randomBytes } from 'node:crypto';
 
 import type { PrismaClient } from '@prisma/client';
 
-import { getMockConfig } from './mock-config';
+import { getMockConfig, type MockConfigSource } from './mock-config';
 
 /**
  * 题目加载模式输入。`mode` 为判别字段,字段集合按需收紧。
@@ -41,7 +41,8 @@ export type LoadInput =
   | { mode: 'SEQUENTIAL'; bankId: string }
   | { mode: 'RANDOM'; bankId: string }
   | { mode: 'CHAPTER'; bankId: string; categoryIds: string[] }
-  | { mode: 'MOCK'; bankId: string; bankCode: string }
+  | { mode: 'CHAPTER_RANDOM'; bankId: string; categoryIds: string[] }
+  | { mode: 'MOCK'; bankId: string; bankCode: string; mockConfigSource?: MockConfigSource | null }
   | { mode: 'WRONG_REVIEW'; userId: string };
 
 /**
@@ -85,8 +86,10 @@ export async function loadQuestionsForMode(
       return loadRandom(prisma, input.bankId);
     case 'CHAPTER':
       return loadChapter(prisma, input.bankId, input.categoryIds);
+    case 'CHAPTER_RANDOM':
+      return loadChapterRandom(prisma, input.bankId, input.categoryIds);
     case 'MOCK':
-      return loadMock(prisma, input.bankId, input.bankCode);
+      return loadMock(prisma, input.bankId, input.bankCode, input.mockConfigSource);
     case 'WRONG_REVIEW':
       return loadWrongReview(prisma, input.userId);
     default: {
@@ -203,6 +206,17 @@ async function loadChapter(
   return { ok: true, questionIds: rows.map((r) => r.id) };
 }
 
+async function loadChapterRandom(
+  prisma: PrismaClient,
+  bankId: string,
+  rootCategoryIds: string[],
+): Promise<LoadResult> {
+  const result = await loadChapter(prisma, bankId, rootCategoryIds);
+  if (!result.ok) return result;
+  fisherYatesShuffleInPlace(result.questionIds);
+  return result;
+}
+
 /**
  * MOCK:整库随机抽 `MOCK_CONFIG[bankCode].count` 题;题数不足返回
  * `INSUFFICIENT_QUESTIONS`,不做降级。同时返回 `expiresAt = now + durationMs`,
@@ -212,8 +226,9 @@ async function loadMock(
   prisma: PrismaClient,
   bankId: string,
   bankCode: string,
+  mockConfigSource?: MockConfigSource | null,
 ): Promise<LoadResult> {
-  const config = getMockConfig(bankCode);
+  const config = getMockConfig(bankCode, mockConfigSource);
   const rows = await prisma.question.findMany({
     where: { bankId },
     select: { id: true },
