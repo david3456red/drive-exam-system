@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildAnswerCardItems } from '@/lib/exam-engine/answer-card';
 
 describe('buildAnswerCardItems', () => {
-  it('uses current state as the visual priority over correctness', () => {
+  it('keeps correctness visible when an answered question is current', () => {
     const items = buildAnswerCardItems({
       order: ['q1', 'q2', 'q3'],
       currentIndex: 1,
@@ -14,10 +14,10 @@ describe('buildAnswerCardItems', () => {
       revealCorrectness: true,
     });
 
-    expect(items.map((item) => item.state)).toEqual([
-      'correct',
-      'current',
-      'empty',
+    expect(items.map((item) => ({ outcome: item.outcome, current: item.current }))).toEqual([
+      { outcome: 'correct', current: false },
+      { outcome: 'wrong', current: true },
+      { outcome: 'empty', current: false },
     ]);
   });
 
@@ -33,9 +33,9 @@ describe('buildAnswerCardItems', () => {
     });
 
     expect(items).toEqual([
-      { number: 1, questionId: 'q1', state: 'correct', answered: true },
-      { number: 2, questionId: 'q2', state: 'wrong', answered: true },
-      { number: 3, questionId: 'q3', state: 'current', answered: false },
+      { number: 1, questionId: 'q1', outcome: 'correct', current: false, answered: true },
+      { number: 2, questionId: 'q2', outcome: 'wrong', current: false, answered: true },
+      { number: 3, questionId: 'q3', outcome: 'empty', current: true, answered: false },
     ]);
   });
 
@@ -51,9 +51,9 @@ describe('buildAnswerCardItems', () => {
     });
 
     expect(items).toEqual([
-      { number: 1, questionId: 'q1', state: 'answered', answered: true },
-      { number: 2, questionId: 'q2', state: 'answered', answered: true },
-      { number: 3, questionId: 'q3', state: 'current', answered: false },
+      { number: 1, questionId: 'q1', outcome: 'answered', current: false, answered: true },
+      { number: 2, questionId: 'q2', outcome: 'answered', current: false, answered: true },
+      { number: 3, questionId: 'q3', outcome: 'empty', current: true, answered: false },
     ]);
   });
 });

@@ -284,6 +284,96 @@ describe('commitImport', () => {
  expect(updated.categories.map((item) => item.category.name)).toEqual(['new category']);
  });
 
+ it('fills a missing image when an imported source row updates with an image', async () => {
+ await prisma.question.create({
+ data: {
+ bankId,
+ type: 'SINGLE',
+ content: 'existing source question without image',
+ imageUrl: null,
+ options: JSON.stringify([
+ { key: 'A', text: 'wrong' },
+ { key: 'B', text: 'right' },
+ ]),
+ answer: 'B',
+ explanation: null,
+ tags: JSON.stringify(['old']),
+ sourceSite: 'wukong',
+ sourceQuestionId: 'image-missing',
+ },
+ });
+
+ const result = await commitImportRows(prisma, [
+ {
+ type: 'SINGLE',
+ content: 'updated source question with image',
+ imageUrl: '/uploads/questions/new.png',
+ optionA: 'wrong',
+ optionB: 'right',
+ answer: 'B',
+ categories: [],
+ tags: ['wukong'],
+ sourceSite: 'wukong',
+ sourceQuestionId: 'image-missing',
+ },
+ ], {
+ bankId,
+ duplicateStrategy: 'update',
+ preserveExistingImageOnUpdate: true,
+ });
+
+ expect(result).toEqual({ ok: true, insertedCount: 0, updatedCount: 1, skippedCount: 0 });
+ const updated = await prisma.question.findFirstOrThrow({
+ where: { sourceQuestionId: 'image-missing' },
+ });
+ expect(updated.imageUrl).toBe('/uploads/questions/new.png');
+ });
+
+ it('keeps an existing image when an imported source row updates with another image', async () => {
+ await prisma.question.create({
+ data: {
+ bankId,
+ type: 'SINGLE',
+ content: 'existing source question with image',
+ imageUrl: '/uploads/questions/old.png',
+ options: JSON.stringify([
+ { key: 'A', text: 'wrong' },
+ { key: 'B', text: 'right' },
+ ]),
+ answer: 'B',
+ explanation: null,
+ tags: JSON.stringify(['old']),
+ sourceSite: 'wukong',
+ sourceQuestionId: 'image-existing',
+ },
+ });
+
+ const result = await commitImportRows(prisma, [
+ {
+ type: 'SINGLE',
+ content: 'updated source question with replacement image',
+ imageUrl: '/uploads/questions/new.png',
+ optionA: 'wrong',
+ optionB: 'right',
+ answer: 'B',
+ categories: [],
+ tags: ['wukong'],
+ sourceSite: 'wukong',
+ sourceQuestionId: 'image-existing',
+ },
+ ], {
+ bankId,
+ duplicateStrategy: 'update',
+ preserveExistingImageOnUpdate: true,
+ });
+
+ expect(result).toEqual({ ok: true, insertedCount: 0, updatedCount: 1, skippedCount: 0 });
+ const updated = await prisma.question.findFirstOrThrow({
+ where: { sourceQuestionId: 'image-existing' },
+ });
+ expect(updated.imageUrl).toBe('/uploads/questions/old.png');
+ });
+
  it('can merge categories when updating an imported source row', async () => {
  const existingCategory = await prisma.category.create({ data: { name: 'chapter one' } });
  const question = await prisma.question.create({

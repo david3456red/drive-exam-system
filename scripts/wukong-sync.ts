@@ -55,6 +55,8 @@ syncWukongCatalog({
         `题库 ${result.bankCount}`,
         `章节 ${result.chapterCount}`,
         `读取 ${result.questionCount} 题`,
+        `带图 ${result.imageCount} 题`,
+        `带解析 ${result.explanationCount} 题`,
         `新增 ${result.insertedCount}`,
         `更新 ${result.updatedCount}`,
         `跳过 ${result.skippedCount}`,

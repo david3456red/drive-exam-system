@@ -21,7 +21,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
-    "wukong:sync": "tsx scripts/wukong-sync.ts"
+    "wukong:sync": "tsx scripts/wukong-sync.ts",
+    "wukong:audit": "tsx scripts/wukong-audit.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -211,11 +211,11 @@ function questionDataForRow(
  } = {},
 ): Omit<Prisma.QuestionUncheckedCreateInput, 'id' | 'bankId' | 'createdAt'> {
  const shouldPreserveImage =
- options.preserveExistingImageOnUpdate && row.imageUrl == null;
+ options.preserveExistingImageOnUpdate && options.currentImageUrl != null;
  return {
  type: row.type,
  content: row.content,
- imageUrl: shouldPreserveImage ? options.currentImageUrl ?? null : row.imageUrl ?? null,
+ imageUrl: shouldPreserveImage ? options.currentImageUrl : row.imageUrl ?? null,
  options: JSON.stringify(optionsForRow(row)),
  answer: row.answer,
  explanation: row.explanation ?? null,

@@ -48,7 +48,7 @@ describe('importer parsing and preview', () => {
     expect(result.invalid[0]?.errors).toContain('OPTION_MISSING_FOR_ANSWER');
   });
 
-  it('previewImport accepts JUDGE rows without option columns', () => {
+  it('previewImport accepts true and false JUDGE rows without option columns', () => {
     const result = previewImport(jsonSource, [
       {
         type: 'JUDGE',
@@ -57,9 +57,16 @@ describe('importer parsing and preview', () => {
         categories: 'signals',
         tags: 'judge',
       },
+      {
+        type: 'JUDGE',
+        content: 'high beams are always required',
+        answer: 'F',
+        categories: 'signals',
+        tags: 'judge',
+      },
     ]);
 
-    expect(result.valid).toHaveLength(1);
+    expect(result.valid).toHaveLength(2);
     expect(result.invalid).toHaveLength(0);
   });
 

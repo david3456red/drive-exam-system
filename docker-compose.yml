@@ -13,3 +13,4 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/data
+      - ./data/uploads:/app/public/uploads

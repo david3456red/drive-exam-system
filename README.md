@@ -72,7 +72,8 @@ docker compose up -d --build
 2. `pnpm db:seed`
 3. `node server.js`
 
-SQLite 数据库位于 `./data/prod.db`。备份时停止容器或确保无写入后复制该文件即可。
+SQLite 数据库位于 `./data/prod.db`，题图位于 `./data/uploads/questions` 并挂载到容器内
+`/app/public/uploads/questions`。备份时停止容器或确保无写入后复制整个 `./data` 目录即可。
 
 ## 数据初始化
 

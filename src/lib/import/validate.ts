@@ -117,14 +117,16 @@ export function validateRow(row: unknown, rowIndex: number): ValidateRowResult {
   //
   // 仅对 `[A-F]` 范围内的字母做该检查;`T` / `F` / 非法字符不进入该规则,
   // 由 `validateQuestionPayload` 单独反馈。
-  const referenced = uniqueAtoFLetters(r.answer);
-  let missingReported = false;
-  for (const letter of referenced) {
-    const cell = readOptionColumn(r, letter);
-    if (cell == null || cell.trim().length === 0) {
-      if (!missingReported) {
-        errors.push(ERR_OPTION_MISSING_FOR_ANSWER);
-        missingReported = true; // 同一行最多报告一次,避免重复
+  if (r.type !== 'JUDGE') {
+    const referenced = uniqueAtoFLetters(r.answer);
+    let missingReported = false;
+    for (const letter of referenced) {
+      const cell = readOptionColumn(r, letter);
+      if (cell == null || cell.trim().length === 0) {
+        if (!missingReported) {
+          errors.push(ERR_OPTION_MISSING_FOR_ANSWER);
+          missingReported = true; // 同一行最多报告一次,避免重复
+        }
       }
     }
   }

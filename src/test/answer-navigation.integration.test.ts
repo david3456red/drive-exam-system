@@ -181,9 +181,7 @@ describe('answer navigation actions', () => {
     formData.set('costMs', '300');
 
     await expect(actions.submitAnswerAction(formData)).rejects.toThrow(
-      `REDIRECT:/exam/session/${attempt.id}?feedback=${encodeURIComponent(
-        fixture.questionIds[1]!,
-      )}`,
+      `REDIRECT:/exam/session/${attempt.id}`,
     );
 
     const stored = await prisma.examAttempt.findUniqueOrThrow({

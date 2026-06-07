@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildExamWorkbench } from '@/lib/exam-workbench';
+import { WORKBENCH_VEHICLE_CODES, buildExamWorkbench } from '@/lib/exam-workbench';
 import { getMockConfig } from '@/lib/exam-engine/mock-config';
 
 describe('exam workbench grouping', () => {
+  it('does not expose C6 as a static vehicle entry', () => {
+    expect(WORKBENCH_VEHICLE_CODES).toEqual(['C1', 'B2', 'A2', 'M1', 'SL']);
+    expect(WORKBENCH_VEHICLE_CODES).not.toContain('C6');
+  });
+
   it('groups banks by vehicle first and subject second with stable ordering', () => {
     const workbench = buildExamWorkbench([
       {

@@ -3,7 +3,6 @@ export const VEHICLE_LABELS: Record<string, string> = {
   B2: '客车',
   A2: '货车',
   M1: '摩托车',
-  C6: 'C6轻挂',
   SL: '三力测试',
 };
 
@@ -15,7 +14,7 @@ export const SUBJECT_LABELS: Record<string, string> = {
   SL: '三力测试',
 };
 
-export const WORKBENCH_VEHICLE_CODES = ['C1', 'B2', 'A2', 'M1', 'C6', 'SL'] as const;
+export const WORKBENCH_VEHICLE_CODES = ['C1', 'B2', 'A2', 'M1', 'SL'] as const;
 const VEHICLE_ORDER = [...WORKBENCH_VEHICLE_CODES];
 const SUBJECT_ORDER = ['K1', 'K4', 'TS', 'MF', 'SL'];
 

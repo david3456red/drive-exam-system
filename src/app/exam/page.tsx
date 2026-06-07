@@ -17,9 +17,9 @@ import {
   SUBJECT_LABELS,
   VEHICLE_LABELS,
   WORKBENCH_VEHICLE_CODES,
- buildExamWorkbench,
- defaultSubjectCode,
- defaultVehicleCode,
+  buildExamWorkbench,
+  defaultSubjectCode,
+  defaultVehicleCode,
 } from '@/lib/exam-workbench';
 import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
@@ -49,13 +49,13 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
     }),
   ]);
 
- const workbench = buildExamWorkbench(banks);
- const requestedVehicle = searchParams?.vehicle;
- const requestedSubject = searchParams?.subject;
- const vehicleCode =
- requestedVehicle && WORKBENCH_VEHICLE_CODES.includes(requestedVehicle as (typeof WORKBENCH_VEHICLE_CODES)[number])
- ? requestedVehicle
- : defaultVehicleCode(workbench);
+  const workbench = buildExamWorkbench(banks);
+  const requestedVehicle = searchParams?.vehicle;
+  const requestedSubject = searchParams?.subject;
+  const vehicleCode =
+    requestedVehicle && WORKBENCH_VEHICLE_CODES.includes(requestedVehicle as (typeof WORKBENCH_VEHICLE_CODES)[number])
+      ? requestedVehicle
+      : defaultVehicleCode(workbench);
   const vehicle = workbench.find((item) => item.code === vehicleCode);
   const subjectCode =
     requestedSubject && vehicle?.subjects.some((item) => item.code === requestedSubject)
@@ -77,7 +77,7 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
           练题目录
         </span>
         <h1>按车型、科目和章节练题</h1>
-        <p>先选车型，再选科目或专项；每个章节都提供顺序练习和随机练习，模拟考试、错题集、成绩单固定在右侧。</p>
+        <p>先选车型，再选科目或专项；整库练习、模拟考试和章节练习都从当前题库开始。</p>
       </div>
       {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
 
@@ -149,6 +149,23 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
                     </form>
                   );
                 })}
+                {canMock ? (
+                  ongoingKey.get(`${selectedBank.id}:MOCK`) ? (
+                    <OngoingAttemptActions
+                      attemptId={ongoingKey.get(`${selectedBank.id}:MOCK`)!}
+                      label={EXAM_MODE_LABEL.MOCK}
+                    />
+                  ) : (
+                    <form action={startSessionAction}>
+                      <input type="hidden" name="bankId" value={selectedBank.id} />
+                      <input type="hidden" name="mode" value="MOCK" />
+                      <button className="danger" type="submit">
+                        <Gauge size={17} aria-hidden="true" />
+                        {EXAM_MODE_LABEL.MOCK}
+                      </button>
+                    </form>
+                  )
+                ) : null}
               </div>
 
               <div className="table-wrap">
@@ -201,24 +218,6 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
             </span>
             <h2>{selectedBank ? SUBJECT_LABELS[selectedBank.subjectCode ?? ''] ?? selectedBank.name : '待选择题库'}</h2>
           </div>
-
-          {selectedBank && canMock ? (
-            ongoingKey.get(`${selectedBank.id}:MOCK`) ? (
-              <OngoingAttemptActions
-                attemptId={ongoingKey.get(`${selectedBank.id}:MOCK`)!}
-                label={EXAM_MODE_LABEL.MOCK}
-              />
-            ) : (
-              <form action={startSessionAction}>
-                <input type="hidden" name="bankId" value={selectedBank.id} />
-                <input type="hidden" name="mode" value="MOCK" />
-                <button className="danger" type="submit">
-                  <Gauge size={17} aria-hidden="true" />
-                  模拟考试
-                </button>
-              </form>
-            )
-          ) : null}
 
           {ongoingKey.get('wrong:WRONG_REVIEW') ? (
             <OngoingAttemptActions attemptId={ongoingKey.get('wrong:WRONG_REVIEW')!} label="错题重做" />

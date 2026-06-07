@@ -172,7 +172,7 @@ SQLite 不支持 Prisma enum，枚举字段统一以 `String` 存储，合法取
 - 页面最大宽度为 `1180px`，移动端使用 `calc(100% - 20px)`。
 - 表单控件和按钮最小高度为 `44px`。
 - 答题图片使用 `QuestionImage` 客户端组件，加载失败时显示可访问 fallback。
-- 后台上传题图保存到 `public/uploads/questions`，题目表继续只保存 public URL。
+- 后台上传题图保存到 `public/uploads/questions`，题目表继续只保存 public URL。Docker 部署时 `/app/public/uploads` 挂载到宿主机 `./data/uploads`。
 - 不使用大型 UI 组件库，减少 bundle 和运行时内存。
 
 ## 测试
@@ -271,6 +271,8 @@ docker compose up -d --build
 
 - 容器内：`/data/prod.db`
 - 宿主机：`./data/prod.db`
+- 题图目录：宿主机 `./data/uploads/questions` -> 容器内 `/app/public/uploads/questions`
+- 备份时复制整个 `./data` 目录即可覆盖数据库与题图。
 
 当前开发环境未安装 Docker CLI，镜像构建和 2C2G 容器内 RSS 实测需在有 Docker 的机器上执行。
 
@@ -282,7 +284,7 @@ docker compose up -d --build
 - 导入大 Excel 时建议按批次拆分，避免单次解析过大文件。
 - 生产部署使用 `NEXT_STANDALONE=true` 构建 standalone 输出。
 - 如题库图片来自外链，继续使用原生 `img`，避免 Next Image 远端域名配置和优化进程开销。
-- 运行时上传的 `public/uploads/questions` 不属于 Docker Compose 的 `./data:/data` 持久化卷；重建或替换容器前需要单独备份。
+- 运行时上传和悟空同步的题图通过 Docker Compose 挂载持久化到 `./data/uploads`。
 
 ## 维护注意事项
 

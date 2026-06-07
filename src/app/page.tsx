@@ -93,9 +93,7 @@ export default async function HomePage() {
                   <span className="muted">
                     {vehicle
                       ? `${vehicle.subjects.length} 个科目 / 专项`
-                      : code === 'C6'
-                        ? '目标站暂未开放'
-                        : '待同步'}
+                      : '待同步'}
                   </span>
                 </div>
                 <div className="subject-links">

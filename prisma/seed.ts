@@ -314,6 +314,15 @@ async function main() {
   // ---------------------------------------------------------------------------
   console.log(`[seed] upsert ${BUILTIN_BANKS.length} 个内置题库...`);
   for (const b of BUILTIN_BANKS) {
+    const existing = await prisma.questionBank.findUnique({
+      where: { code: b.code },
+      select: { sourceSite: true },
+    });
+    if (existing?.sourceSite === 'wukong') {
+      console.log(`[seed] ${b.code} is managed by Wukong sync; skip builtin overwrite.`);
+      continue;
+    }
+
     await prisma.questionBank.upsert({
       where: { code: b.code },
       update: {
@@ -416,6 +425,10 @@ async function seedSampleQuestions() {
     const bank = await prisma.questionBank.findUniqueOrThrow({
       where: { code: bankSeed.code },
     });
+    if (bank.sourceSite === 'wukong') {
+      console.log(`[seed] ${bank.code} is managed by Wukong sync; skip sample questions.`);
+      continue;
+    }
     const existingCount = await prisma.question.count({ where: { bankId: bank.id } });
     if (existingCount > 0) {
       console.log(`[seed] ${bank.code} 已有 ${existingCount} 题,跳过示例题生成。`);

@@ -168,6 +168,8 @@ export function WukongImportClient() {
           <ResultMetric label="题库" value={result.bankCount} />
           <ResultMetric label="章节" value={result.chapterCount} />
           <ResultMetric label="读取题目" value={result.questionCount} />
+          <ResultMetric label="带图题目" value={result.imageCount} />
+          <ResultMetric label="带解析题目" value={result.explanationCount} />
           <ResultMetric label="新增" value={result.insertedCount} />
           <ResultMetric label="更新" value={result.updatedCount} />
           <ResultMetric label="跳过" value={result.skippedCount} />

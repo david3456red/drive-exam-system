@@ -193,9 +193,7 @@ export async function submitAnswerAction(formData: FormData): Promise<void> {
     });
   });
 
-  const feedback =
-    attempt.mode === 'MOCK' ? '' : `?feedback=${encodeURIComponent(questionId)}`;
-  redirect(`/exam/session/${attempt.id}${feedback}`);
+  redirect(`/exam/session/${attempt.id}`);
 }
 
 export async function goToQuestionAction(formData: FormData): Promise<void> {

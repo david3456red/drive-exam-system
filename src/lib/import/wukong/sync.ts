@@ -31,6 +31,8 @@ export type WukongSyncResult =
       bankCount: number;
       chapterCount: number;
       questionCount: number;
+      imageCount: number;
+      explanationCount: number;
       insertedCount: number;
       updatedCount: number;
       skippedCount: number;
@@ -80,9 +82,12 @@ export async function syncWukongCatalog({
     let updatedCount = 0;
     let skippedCount = 0;
     let imageFailedCount = 0;
+    let imageCount = 0;
+    let explanationCount = 0;
     let questionCount = 0;
     const errors: string[] = [];
     const bankCodes = new Set<string>();
+    const cleanedBankIds = new Set<string>();
 
     for (const [index, item] of syncItems.entries()) {
       bankCodes.add(item.bankCode);
@@ -100,8 +105,9 @@ export async function syncWukongCatalog({
       const rows = mergeRowsBySource(
         questions.map((question) => mapWukongQuestion(question, item)),
       );
+      const rowsForImagePreparation = await skipImagesAlreadyStored(prisma, bank.id, rows);
 
-      const imageNames = downloadImages ? imageNamesForRows(rows) : [];
+      const imageNames = downloadImages ? imageNamesForRows(rowsForImagePreparation) : [];
       const failedImages = new Set<string>();
       const images = await mapWithConcurrency(imageNames, 4, async (imageName) => {
         try {
@@ -114,7 +120,7 @@ export async function syncWukongCatalog({
         }
       }).then((items) => items.filter((image): image is NonNullable<typeof image> => Boolean(image)));
 
-      const rowsWithImageFallback = rows.map((row) => {
+      const rowsWithImageFallback = rowsForImagePreparation.map((row) => {
         if (!downloadImages) return { ...row, imageUrl: undefined };
         const name = imageAttachmentReference(row.imageUrl);
         return name && failedImages.has(name) ? { ...row, imageUrl: undefined } : row;
@@ -138,6 +144,12 @@ export async function syncWukongCatalog({
         insertedCount += result.insertedCount;
         updatedCount += result.updatedCount;
         skippedCount += result.skippedCount;
+        imageCount += prepared.rows.filter((row) => Boolean(row.imageUrl)).length;
+        explanationCount += prepared.rows.filter((row) => Boolean(row.explanation)).length;
+        if (!cleanedBankIds.has(bank.id)) {
+          await cleanupWukongSeedSampleQuestions(prisma, bank.id);
+          cleanedBankIds.add(bank.id);
+        }
       } else {
         errors.push(`${item.bankName}/${item.title}：${result.error}`);
       }
@@ -148,6 +160,8 @@ export async function syncWukongCatalog({
       bankCount: bankCodes.size,
       chapterCount: syncItems.length,
       questionCount,
+      imageCount,
+      explanationCount,
       insertedCount,
       updatedCount,
       skippedCount,
@@ -157,6 +171,57 @@ export async function syncWukongCatalog({
   } catch {
     return { ok: false, error: '悟空数据同步失败，请检查账号、网络或稍后重试' };
   }
+}
+
+async function cleanupWukongSeedSampleQuestions(
+  prisma: PrismaClient,
+  bankId: string,
+): Promise<void> {
+  await prisma.question.deleteMany({
+    where: {
+      bankId,
+      sourceSite: null,
+      records: { none: {} },
+      wrongs: { none: {} },
+      OR: [
+        { content: { contains: '示例单选题' } },
+        { content: { contains: '示例多选题' } },
+        { content: { contains: '示例判断题' } },
+      ],
+    },
+  });
+}
+
+async function skipImagesAlreadyStored(
+  prisma: PrismaClient,
+  bankId: string,
+  rows: ImportRow[],
+): Promise<ImportRow[]> {
+  const sourceIds = rows
+    .map((row) => row.sourceQuestionId)
+    .filter((id): id is string => Boolean(id));
+  if (sourceIds.length === 0) return rows;
+
+  const existing = await prisma.question.findMany({
+    where: {
+      bankId,
+      sourceSite: WUKONG_SOURCE_SITE,
+      sourceQuestionId: { in: sourceIds },
+      imageUrl: { not: null },
+    },
+    select: { sourceQuestionId: true },
+  });
+  const existingWithImage = new Set(
+    existing
+      .map((question) => question.sourceQuestionId)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  return rows.map((row) =>
+    row.sourceQuestionId && existingWithImage.has(row.sourceQuestionId)
+      ? { ...row, imageUrl: undefined }
+      : row,
+  );
 }
 
 export async function upsertWukongBank(

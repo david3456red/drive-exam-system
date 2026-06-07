@@ -1,4 +1,4 @@
-export type AnswerCardState = 'empty' | 'answered' | 'correct' | 'wrong' | 'current';
+export type AnswerCardOutcome = 'empty' | 'answered' | 'correct' | 'wrong';
 
 export type AnswerCardRecord = {
   questionId: string;
@@ -8,7 +8,8 @@ export type AnswerCardRecord = {
 export type AnswerCardItem = {
   number: number;
   questionId: string;
-  state: AnswerCardState;
+  outcome: AnswerCardOutcome;
+  current: boolean;
   answered: boolean;
 };
 
@@ -30,20 +31,19 @@ export function buildAnswerCardItems({
   return order.map((questionId, index) => {
     const record = recordByQuestionId.get(questionId);
     const answered = Boolean(record);
-    let state: AnswerCardState = 'empty';
+    let outcome: AnswerCardOutcome = 'empty';
 
-    if (index === currentIndex) {
-      state = 'current';
-    } else if (record && revealCorrectness) {
-      state = record.isCorrect ? 'correct' : 'wrong';
+    if (record && revealCorrectness) {
+      outcome = record.isCorrect ? 'correct' : 'wrong';
     } else if (record) {
-      state = 'answered';
+      outcome = 'answered';
     }
 
     return {
       number: index + 1,
       questionId,
-      state,
+      outcome,
+      current: index === currentIndex,
       answered,
     };
   });

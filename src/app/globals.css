@@ -1078,12 +1078,6 @@ tbody tr:hover {
   transform: translateY(-1px);
 }
 
-.answer-card-cell-current {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: white;
-}
-
 .answer-card-cell-correct {
   border-color: rgb(35 116 77 / 34%);
   background: var(--success);
@@ -1106,6 +1100,11 @@ tbody tr:hover {
   border-color: var(--line);
   background: var(--surface-soft);
   color: var(--muted);
+}
+
+.answer-card-cell-current {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgb(43 103 119 / 22%);
 }
 
 .answer-card-legend {
@@ -1161,6 +1160,91 @@ tbody tr:hover {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: white;
+}
+
+.question-image-trigger {
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.question-image-trigger:hover {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.question-image-zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  color: white;
+  background: rgb(16 32 37 / 72%);
+}
+
+.question-image-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(16 32 37 / 78%);
+}
+
+.question-image-full {
+  max-width: min(1100px, 96vw);
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  background: white;
+  box-shadow: var(--shadow-md);
+}
+
+.question-image-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 61;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-color: rgb(255 255 255 / 24%);
+  color: white;
+  background: rgb(16 32 37 / 76%);
+}
+
+.question-analysis {
+  align-items: flex-start;
+}
+
+.question-analysis-button {
+  width: fit-content;
+}
+
+.analysis-panel {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--warning-soft);
+  padding: 14px;
+}
+
+.analysis-panel p {
+  margin: 0;
 }
 
 .question-image-fallback {

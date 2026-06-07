@@ -16,6 +16,7 @@ import {
   goToQuestionAction,
   submitAnswerAction,
 } from '@/app/exam/actions';
+import { QuestionAnalysis } from '@/components/question-analysis';
 import { QuestionImage } from '@/components/question-image';
 import { prisma } from '@/lib/db';
 import {
@@ -32,7 +33,7 @@ import { MockEffects } from './mock-effects';
 
 type SessionPageProps = {
   params: { attemptId: string };
-  searchParams?: { feedback?: string; error?: string };
+  searchParams?: { error?: string };
 };
 
 export default async function SessionPage({
@@ -70,7 +71,7 @@ export default async function SessionPage({
   const recordByQuestionId = new Map(records.map((record) => [record.questionId, record]));
   const currentRecord = recordByQuestionId.get(question.id);
   const revealCorrectness = attempt.mode !== 'MOCK';
-  const lockedPracticeAnswer = revealCorrectness && currentRecord;
+  const lockedPracticeAnswer = revealCorrectness && Boolean(currentRecord);
   const answerCardItems = buildAnswerCardItems({
     order,
     records,
@@ -79,17 +80,6 @@ export default async function SessionPage({
   });
 
   const options = parseQuestionOptions(question.options);
-  const feedbackQuestionId =
-    revealCorrectness ? searchParams?.feedback ?? (currentRecord ? question.id : undefined) : undefined;
-  const feedback = feedbackQuestionId
-    ? await prisma.examRecord.findFirst({
-        where: { attemptId: attempt.id, questionId: feedbackQuestionId },
-        include: { question: true },
-      })
-    : null;
-  const feedbackOptions = feedback
-    ? parseQuestionOptions(feedback.question.options)
-    : [];
 
   return (
     <main className="page stack">
@@ -115,54 +105,23 @@ export default async function SessionPage({
         <div className="exam-session-main stack">
           {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
 
-          {feedback && revealCorrectness ? (
-            <section className="panel stack">
-              <div className="cluster">
-                <span className={feedback.isCorrect ? 'badge good' : 'badge bad'}>
-                  {feedback.isCorrect ? (
-                    <CheckCircle2 size={15} aria-hidden="true" />
-                  ) : (
-                    <XCircle size={15} aria-hidden="true" />
-                  )}
-                  {feedback.isCorrect ? '回答正确' : '回答错误'}
-                </span>
-                <strong>{feedback.question.content}</strong>
-              </div>
-              <p>
-                你的答案：{feedback.userAnswer || '未作答'}；正确答案：
-                {feedback.question.answer}
-              </p>
-              {feedback.question.explanation ? (
-                <p className="muted">{feedback.question.explanation}</p>
-              ) : null}
-              <div className="stack">
-                {feedbackOptions.map((option) => (
-                  <div
-                    className="option"
-                    key={option.key}
-                    style={
-                      feedback.question.answer.includes(option.key)
-                        ? { borderColor: 'var(--success)' }
-                        : feedback.userAnswer.includes(option.key)
-                          ? { borderColor: 'var(--danger)' }
-                          : undefined
-                    }
-                  >
-                    <strong>{option.key}</strong>
-                    <span>{option.text}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
           <section className="question panel stack">
             <div className="cluster">
               <span className="badge">
                 <ClipboardCheck size={15} aria-hidden="true" />
                 {QUESTION_TYPE_LABEL[question.type as keyof typeof QUESTION_TYPE_LABEL]}
               </span>
-              <span className="muted">题号 {question.id.slice(-6)}</span>
+              <span className="muted">题号 {currentIndex + 1}</span>
+              {lockedPracticeAnswer && currentRecord ? (
+                <span className={currentRecord.isCorrect ? 'badge good' : 'badge bad'}>
+                  {currentRecord.isCorrect ? (
+                    <CheckCircle2 size={15} aria-hidden="true" />
+                  ) : (
+                    <XCircle size={15} aria-hidden="true" />
+                  )}
+                  {currentRecord.isCorrect ? '回答正确' : '回答错误'}
+                </span>
+              ) : null}
               {lockedPracticeAnswer ? <span className="badge warn">已判题，不能修改</span> : null}
             </div>
             <h1>{question.content}</h1>
@@ -170,6 +129,9 @@ export default async function SessionPage({
 
             {lockedPracticeAnswer ? (
               <div className="stack">
+                <p className="muted">
+                  你的答案：{currentRecord?.userAnswer || '未作答'}；正确答案：{question.answer}
+                </p>
                 {options.map((option) => (
                   <div
                     className="option"
@@ -186,6 +148,7 @@ export default async function SessionPage({
                     <span>{option.text}</span>
                   </div>
                 ))}
+                <QuestionAnalysis answer={question.answer} explanation={question.explanation} />
               </div>
             ) : (
               <QuestionAnswerForm
