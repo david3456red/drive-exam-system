@@ -72,7 +72,7 @@ async function commitImportWithImages(
 }
 
 function revalidateQuestions(result: CommitResult): void {
-  if (result.ok && result.insertedCount > 0) {
+  if (result.ok && (result.insertedCount > 0 || result.updatedCount > 0)) {
     revalidatePath('/admin/questions');
     revalidatePath('/admin/questions/import');
     revalidatePath('/exam');

@@ -74,14 +74,14 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
       <div className="page-title">
         <span className="badge good">
           <BookOpenCheck size={15} aria-hidden="true" />
-          学员训练台
+          练题目录
         </span>
-        <h1>按车型和科目练题</h1>
-        <p>先选车型，再选科目或专项；章节内可顺序练习或随机练习，模拟考试和错题复盘固定在右侧。</p>
+        <h1>按车型、科目和章节练题</h1>
+        <p>先选车型，再选科目或专项；每个章节都提供顺序练习和随机练习，模拟考试、错题集、成绩单固定在右侧。</p>
       </div>
       {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
 
-      <section className="panel stack">
+      <section className="directory-panel stack">
         <div className="segmented" aria-label="车型">
           {WORKBENCH_VEHICLE_CODES.map((code) => {
             const available = workbench.some((item) => item.code === code);
@@ -118,14 +118,17 @@ export default async function ExamPage({ searchParams }: ExamPageProps) {
       </section>
 
       <div className="exam-workbench-layout">
-        <section className="panel stack">
+        <section className="directory-panel stack">
           {selectedBank ? (
             <>
-              <div className="cluster">
-                <span className="badge">
-                  <BookOpenCheck size={15} aria-hidden="true" />
-                  {selectedBank.name}
-                </span>
+              <div className="directory-head">
+                <div>
+                  <span className="badge">
+                    <BookOpenCheck size={15} aria-hidden="true" />
+                    {selectedBank.name}
+                  </span>
+                  <h2>章节 / 套卷</h2>
+                </div>
                 <span className="badge good">{selectedBank._count.questions} 题</span>
               </div>
 

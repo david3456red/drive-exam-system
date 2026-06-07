@@ -79,7 +79,7 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
  </Link>
  <Link className="button" href="/admin/questions/import/wukong">
  <DownloadCloud size={17} aria-hidden="true" />
- 悟空迁移
+ 悟空同步
  </Link>
  <Link className="button" href="/admin/categories">
             <FolderTree size={17} aria-hidden="true" />

@@ -85,35 +85,51 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
         </button>
       </form>
 
-      <section className="stack">
-        {wrongs.items.map((item) => (
-          <article className="panel stack" key={item.id}>
-            <div className="cluster">
-              <span className={item.mastered ? 'badge good' : 'badge bad'}>
-                {item.mastered ? (
-                  <CheckCircle2 size={15} aria-hidden="true" />
-                ) : (
-                  <XCircle size={15} aria-hidden="true" />
-                )}
-                {item.mastered ? '已掌握' : '未掌握'}
-              </span>
-              <span className="badge">{item.bankName}</span>
-              <span className="muted">最近答错 {formatDateTime(item.lastWrongAt)}</span>
-            </div>
-            <h2>{item.questionContent}</h2>
-            <p className="muted">
-              错误 {item.wrongCount} 次，连续答对 {item.rightCount} 次
-            </p>
-            <form action={toggleMasteredAction}>
-              <input type="hidden" name="wrongId" value={item.id} />
-              <input type="hidden" name="mastered" value={String(!item.mastered)} />
-              <button className={item.mastered ? 'ghost' : 'primary'} type="submit">
-                <CheckCircle2 size={16} aria-hidden="true" />
-                {item.mastered ? '取消掌握' : '标记掌握'}
-              </button>
-            </form>
-          </article>
-        ))}
+      <section className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>状态</th>
+              <th>题库</th>
+              <th>题目</th>
+              <th>复盘</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wrongs.items.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <span className={item.mastered ? 'badge good' : 'badge bad'}>
+                    {item.mastered ? (
+                      <CheckCircle2 size={15} aria-hidden="true" />
+                    ) : (
+                      <XCircle size={15} aria-hidden="true" />
+                    )}
+                    {item.mastered ? '已掌握' : '未掌握'}
+                  </span>
+                </td>
+                <td>{item.bankName}</td>
+                <td className="question-cell">{item.questionContent}</td>
+                <td>
+                  错误 {item.wrongCount} 次，连续答对 {item.rightCount} 次
+                  <br />
+                  <span className="muted">最近 {formatDateTime(item.lastWrongAt)}</span>
+                </td>
+                <td>
+                  <form action={toggleMasteredAction}>
+                    <input type="hidden" name="wrongId" value={item.id} />
+                    <input type="hidden" name="mastered" value={String(!item.mastered)} />
+                    <button className={item.mastered ? 'ghost' : 'primary'} type="submit">
+                      <CheckCircle2 size={16} aria-hidden="true" />
+                      {item.mastered ? '取消掌握' : '标记掌握'}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         {wrongs.items.length === 0 ? <div className="empty">暂无错题</div> : null}
       </section>
 

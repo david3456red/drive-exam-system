@@ -18,6 +18,7 @@ export type WukongBankSeed = {
   vehicleCode: string;
   subjectCode: string;
   km?: string;
+  xkm?: string;
   displayOrder?: number;
 };
 
@@ -34,14 +35,20 @@ export type WukongCatalogItem = WukongBankSeed & {
 export const DEFAULT_WUKONG_BANKS: readonly WukongBankSeed[] = [
   { bankCode: 'C1_K1', bankName: '小车科目一', vehicleCode: 'C1', subjectCode: 'K1', km: '21', displayOrder: 10 },
   { bankCode: 'C1_K4', bankName: '小车科目四', vehicleCode: 'C1', subjectCode: 'K4', km: '22', displayOrder: 20 },
-  { bankCode: 'C1_TS', bankName: '小车脱审', vehicleCode: 'C1', subjectCode: 'TS', km: '210', displayOrder: 30 },
+  { bankCode: 'C1_TS', bankName: '小车脱审', vehicleCode: 'C1', subjectCode: 'TS', km: '210', xkm: 'ts', displayOrder: 30 },
   { bankCode: 'C1_MF', bankName: '小车满分学习', vehicleCode: 'C1', subjectCode: 'MF', km: '25', displayOrder: 40 },
   { bankCode: 'B2_K1', bankName: '客车科目一', vehicleCode: 'B2', subjectCode: 'K1', km: '21', displayOrder: 110 },
   { bankCode: 'B2_K4', bankName: '客车科目四', vehicleCode: 'B2', subjectCode: 'K4', km: '22', displayOrder: 120 },
+  { bankCode: 'B2_TS', bankName: '客车脱审', vehicleCode: 'B2', subjectCode: 'TS', km: '210', xkm: 'ts', displayOrder: 130 },
+  { bankCode: 'B2_MF', bankName: '客车满分学习', vehicleCode: 'B2', subjectCode: 'MF', km: '25', displayOrder: 140 },
   { bankCode: 'A2_K1', bankName: '货车科目一', vehicleCode: 'A2', subjectCode: 'K1', km: '21', displayOrder: 210 },
   { bankCode: 'A2_K4', bankName: '货车科目四', vehicleCode: 'A2', subjectCode: 'K4', km: '22', displayOrder: 220 },
+  { bankCode: 'A2_TS', bankName: '货车脱审', vehicleCode: 'A2', subjectCode: 'TS', km: '210', xkm: 'ts', displayOrder: 230 },
+  { bankCode: 'A2_MF', bankName: '货车满分学习', vehicleCode: 'A2', subjectCode: 'MF', km: '25', displayOrder: 240 },
   { bankCode: 'M1_K1', bankName: '摩托车科目一', vehicleCode: 'M1', subjectCode: 'K1', km: '35', displayOrder: 310 },
-  { bankCode: 'M1_K4', bankName: '摩托车科目四', vehicleCode: 'M1', subjectCode: 'K4', km: '36', displayOrder: 320 },
+  { bankCode: 'M1_K4', bankName: '摩托车科目四', vehicleCode: 'M1', subjectCode: 'K4', km: '19', displayOrder: 320 },
+  { bankCode: 'M1_TS', bankName: '摩托车脱审', vehicleCode: 'M1', subjectCode: 'TS', km: '350', xkm: 'ts', displayOrder: 330 },
+  { bankCode: 'M1_MF', bankName: '摩托车满分学习', vehicleCode: 'M1', subjectCode: 'MF', km: '125', displayOrder: 340 },
   { bankCode: 'SL_SL', bankName: '三力测试', vehicleCode: 'SL', subjectCode: 'SL', km: '39', displayOrder: 410 },
 ] as const;
 
@@ -112,7 +119,7 @@ export async function scanWukongCatalog(
 ): Promise<WukongCatalogItem[]> {
   const out: WukongCatalogItem[] = [];
   for (const bank of banks) {
-    const html = await fetchWukongText(`home.aspx?flz=${bank.vehicleCode}&km=${bank.km ?? subjectToKm(bank.subjectCode)}`, session, fetchImpl);
+    const html = await fetchWukongText(buildWukongHomePath(bank), session, fetchImpl);
     out.push(...parseWukongCatalogHtml(html, bank));
   }
   return out;
@@ -122,14 +129,27 @@ export async function fetchWukongQuestions(
   session: WukongSession,
   item: WukongCatalogItem,
   fetchImpl: typeof fetch = fetch,
+  options: { pageConcurrency?: number } = {},
 ): Promise<WukongQuestion[]> {
   const first = await fetchWukongQuestionPage(session, item, 1, fetchImpl);
-  const out = [...first.infoContent];
-  for (let page = 2; page <= first.pagecount; page++) {
-    const next = await fetchWukongQuestionPage(session, item, page, fetchImpl);
-    out.push(...next.infoContent);
+  const pages: WukongQuestion[][] = [];
+  pages[0] = first.infoContent;
+  const concurrency = Math.max(1, Math.min(options.pageConcurrency ?? 6, 10));
+  let nextPage = 2;
+
+  async function worker() {
+    while (nextPage <= first.pagecount) {
+      const page = nextPage;
+      nextPage++;
+      const next = await fetchWukongQuestionPage(session, item, page, fetchImpl);
+      pages[page - 1] = next.infoContent;
+    }
   }
-  return out;
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, Math.max(first.pagecount - 1, 0)) }, () => worker()),
+  );
+  return pages.flat();
 }
 
 export function parseWukongCatalogHtml(
@@ -150,7 +170,7 @@ export function parseWukongCatalogHtml(
     const zj = url[2]!;
     const zx = url[3] ?? '';
     const fl = url[4]!;
-    const sourceKey = `${bank.vehicleCode}:${bank.subjectCode}:${km}:${zj}`;
+    const sourceKey = `${bank.vehicleCode}:${bank.subjectCode}:${km}:${zj}:${zx || '-'}:${fl}`;
     if (seen.has(sourceKey)) continue;
     seen.add(sourceKey);
     out.push({
@@ -329,6 +349,15 @@ function subjectToKm(subjectCode: string): string {
     default:
       return '21';
   }
+}
+
+function buildWukongHomePath(bank: WukongBankSeed): string {
+  const params = new URLSearchParams({
+    flz: bank.vehicleCode,
+    km: bank.km ?? subjectToKm(bank.subjectCode),
+  });
+  if (bank.xkm) params.set('xkm', bank.xkm);
+  return `home.aspx?${params.toString()}`;
 }
 
 function mimeFromName(name: string): string {

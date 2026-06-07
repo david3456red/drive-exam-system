@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Hash, XCircle } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
+import { QuestionImage } from '@/components/question-image';
 import { prisma } from '@/lib/db';
 import { EXAM_MODE_LABEL, EXAM_STATUS_LABEL, formatDateTime, formatDuration, parseQuestionOptions } from '@/lib/display';
 import type { ExamMode, ExamStatus } from '@/lib/enums';
@@ -61,6 +62,7 @@ export default async function HistoryDetailPage({ params }: HistoryDetailPagePro
               </span>
             </div>
             <h2>{record.question.content}</h2>
+            {record.question.imageUrl ? <QuestionImage src={record.question.imageUrl} /> : null}
             <p>
               你的答案：{record.userAnswer || '未作答'}；正确答案：{record.question.answer}
             </p>

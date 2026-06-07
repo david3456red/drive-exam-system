@@ -7,6 +7,9 @@ import { validateRow } from './validate';
 
 type CommitOptions = {
   bankId?: string;
+  duplicateStrategy?: 'skip' | 'update';
+  preserveExistingImageOnUpdate?: boolean;
+  categoryStrategy?: 'replace' | 'merge';
 };
 
 type CommitRowsOptions = CommitOptions & {
@@ -49,10 +52,11 @@ export async function commitImportRows(
   options: CommitRowsOptions = {},
 ): Promise<CommitResult> {
   let insertedCount = 0;
+  let updatedCount = 0;
   let skippedCount = options.skippedCount ?? 0;
 
   if (rows.length === 0) {
-    return { ok: true, insertedCount, skippedCount };
+    return { ok: true, insertedCount, updatedCount, skippedCount };
   }
 
   await prisma.$transaction(async (tx) => {
@@ -64,60 +68,58 @@ export async function commitImportRows(
  skippedCount++;
  continue;
  }
- if (await hasImportedSourceQuestion(tx, bankId, row)) {
+ const existing = await findImportedSourceQuestion(tx, bankId, row);
+ if (existing) {
+ if (options.duplicateStrategy !== 'update') {
  skippedCount++;
+ continue;
+ }
+
+ const categoryIds = await resolveCategoryIds(tx, row.categories);
+ await tx.question.update({
+ where: { id: existing.id },
+ data: questionDataForRow(row, {
+ currentImageUrl: existing.imageUrl,
+ preserveExistingImageOnUpdate: options.preserveExistingImageOnUpdate,
+ }),
+ });
+ await syncQuestionCategories(tx, existing.id, categoryIds, options.categoryStrategy ?? 'replace');
+ updatedCount++;
  continue;
  }
 
  const question = await tx.question.create({
  data: {
  bankId,
-          type: row.type,
-          content: row.content,
-          imageUrl: row.imageUrl ?? null,
-          options: JSON.stringify(optionsForRow(row)),
- answer: row.answer,
- explanation: row.explanation ?? null,
- tags: JSON.stringify(row.tags),
- sourceSite: row.sourceSite ?? null,
- sourceQuestionId: row.sourceQuestionId ?? null,
- sourceMeta: row.sourceMeta ?? null,
+ ...questionDataForRow(row),
  },
  select: { id: true },
  });
 
       const categoryIds = await resolveCategoryIds(tx, row.categories);
-      if (categoryIds.length > 0) {
-        await tx.questionCategory.createMany({
-          data: categoryIds.map((categoryId) => ({
-            questionId: question.id,
-            categoryId,
-          })),
-        });
-      }
+      await syncQuestionCategories(tx, question.id, categoryIds, 'replace');
 
       insertedCount++;
     }
   });
 
-  return { ok: true, insertedCount, skippedCount };
+  return { ok: true, insertedCount, updatedCount, skippedCount };
 }
 
-async function hasImportedSourceQuestion(
+async function findImportedSourceQuestion(
  tx: Prisma.TransactionClient,
  bankId: string,
  row: ImportRow,
-): Promise<boolean> {
- if (!row.sourceSite || !row.sourceQuestionId) return false;
- const existing = await tx.question.findFirst({
+): Promise<{ id: string; imageUrl: string | null } | null> {
+ if (!row.sourceSite || !row.sourceQuestionId) return null;
+ return tx.question.findFirst({
  where: {
  bankId,
  sourceSite: row.sourceSite,
  sourceQuestionId: row.sourceQuestionId,
  },
- select: { id: true },
+ select: { id: true, imageUrl: true },
  });
- return Boolean(existing);
 }
 
 async function resolveBankId(
@@ -163,6 +165,65 @@ async function resolveCategoryIds(
     out.push(created.id);
   }
   return out;
+}
+
+async function syncQuestionCategories(
+ tx: Prisma.TransactionClient,
+ questionId: string,
+ categoryIds: string[],
+ strategy: 'replace' | 'merge',
+): Promise<void> {
+ if (strategy === 'replace') {
+ await tx.questionCategory.deleteMany({ where: { questionId } });
+ if (categoryIds.length > 0) {
+ await tx.questionCategory.createMany({
+ data: categoryIds.map((categoryId) => ({
+ questionId,
+ categoryId,
+ })),
+ });
+ }
+ return;
+ }
+
+ if (categoryIds.length === 0) return;
+ const existing = await tx.questionCategory.findMany({
+ where: { questionId },
+ select: { categoryId: true },
+ });
+ const existingIds = new Set(existing.map((item) => item.categoryId));
+ const missing = categoryIds.filter((categoryId) => !existingIds.has(categoryId));
+ if (missing.length > 0) {
+ await tx.questionCategory.createMany({
+ data: missing.map((categoryId) => ({
+ questionId,
+ categoryId,
+ })),
+ });
+ }
+}
+
+function questionDataForRow(
+ row: ImportRow,
+ options: {
+ currentImageUrl?: string | null;
+ preserveExistingImageOnUpdate?: boolean;
+ } = {},
+): Omit<Prisma.QuestionUncheckedCreateInput, 'id' | 'bankId' | 'createdAt'> {
+ const shouldPreserveImage =
+ options.preserveExistingImageOnUpdate && row.imageUrl == null;
+ return {
+ type: row.type,
+ content: row.content,
+ imageUrl: shouldPreserveImage ? options.currentImageUrl ?? null : row.imageUrl ?? null,
+ options: JSON.stringify(optionsForRow(row)),
+ answer: row.answer,
+ explanation: row.explanation ?? null,
+ tags: JSON.stringify(row.tags),
+ sourceSite: row.sourceSite ?? null,
+ sourceQuestionId: row.sourceQuestionId ?? null,
+ sourceMeta: row.sourceMeta ?? null,
+ };
 }
 
 function optionsForRow(row: ImportRow): QuestionOption[] {

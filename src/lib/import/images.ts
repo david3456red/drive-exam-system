@@ -14,6 +14,7 @@ export type { ImportImageAttachment } from '@/lib/question-images';
 type PrepareImportImageOptions = {
   publicRoot?: string;
   randomId?: () => string;
+  maxTotalBytes?: number;
 };
 
 export type PreparedImportRowsWithImages = {
@@ -50,7 +51,7 @@ export async function prepareImportRowsWithImages(
   images: ImportImageAttachment[] = [],
   options: PrepareImportImageOptions = {},
 ): Promise<PreparedImportRowsWithImages> {
-  const result = validateRowsWithImageReferences(source, payload, images);
+  const result = validateRowsWithImageReferences(source, payload, images, options);
   const savedByName = new Map<string, SavedQuestionImage>();
   const savedImages: SavedQuestionImage[] = [];
   const rows: ImportRow[] = [];
@@ -88,8 +89,12 @@ function validateRowsWithImageReferences(
   source: ImportSource,
   payload: unknown,
   images: ImportImageAttachment[],
+  options: PrepareImportImageOptions = {},
 ): ValidatedRowsWithImages {
-  const attachmentIndex = indexAttachments(images);
+  const attachmentIndex = indexAttachments(
+    images,
+    options.maxTotalBytes ?? MAX_IMPORT_IMAGE_TOTAL_BYTES,
+  );
   const rows = source.parse(payload);
   const validRows: ImportRow[] = [];
   const invalid: InvalidRow[] = [];
@@ -113,7 +118,7 @@ function validateRowsWithImageReferences(
   return { rows: validRows, invalid, attachmentIndex };
 }
 
-function indexAttachments(images: ImportImageAttachment[]): AttachmentIndex {
+function indexAttachments(images: ImportImageAttachment[], maxTotalBytes: number): AttachmentIndex {
   const byName = new Map<string, ImportImageAttachment>();
   const duplicateNames = new Set<string>();
   const invalidByName = new Map<string, string>();
@@ -139,7 +144,7 @@ function indexAttachments(images: ImportImageAttachment[]): AttachmentIndex {
     byName,
     duplicateNames,
     invalidByName,
-    totalTooLarge: totalBytes > MAX_IMPORT_IMAGE_TOTAL_BYTES,
+    totalTooLarge: totalBytes > maxTotalBytes,
   };
 }
 

@@ -23,7 +23,7 @@ export default async function QuestionImportPage() {
  <p>先预览行级校验结果，再确认写入题库。</p>
  <Link className="button" href="/admin/questions/import/wukong">
  <DownloadCloud size={17} aria-hidden="true" />
- 悟空交规迁移
+ 悟空交规同步
  </Link>
  </div>
       {banks.length === 0 ? (

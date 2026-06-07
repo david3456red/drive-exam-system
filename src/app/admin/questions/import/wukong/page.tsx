@@ -16,10 +16,10 @@ export default function WukongImportPage() {
         </Link>
         <span className="badge good">
           <DownloadCloud size={15} aria-hidden="true" />
-          授权迁移
+          授权同步
         </span>
-        <h1>悟空交规迁移中心</h1>
-        <p>使用授权账号扫描可见题库，选择章节后导入题目、解析和图片。</p>
+        <h1>悟空交规同步中心</h1>
+        <p>使用授权账号扫描可见题库，选择章节后增量同步题目、解析和图片。</p>
       </div>
       <WukongImportClient />
     </main>

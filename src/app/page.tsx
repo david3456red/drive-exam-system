@@ -1,145 +1,158 @@
 import Link from 'next/link';
 import {
-  BarChart3,
+  ArrowRight,
   BookOpenCheck,
   ClipboardList,
   Gauge,
   History,
   ShieldCheck,
-  UsersRound,
 } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
+import {
+  VEHICLE_LABELS,
+  WORKBENCH_VEHICLE_CODES,
+  buildExamWorkbench,
+} from '@/lib/exam-workbench';
 import { getCurrentUser } from '@/lib/server-session';
 import { homeForRole } from '@/lib/session-shared';
 
 export default async function HomePage() {
   const user = getCurrentUser();
   const href = user ? homeForRole(user.roleCode) : '/login';
-  const [bankCount, questionCount] = await Promise.all([
-    prisma.questionBank.count(),
-    prisma.question.count(),
-  ]);
+  const banks = await prisma.questionBank.findMany({
+    orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+    include: { _count: { select: { questions: true } } },
+  });
+  const workbench = buildExamWorkbench(banks);
+  const bankCount = banks.length;
+  const questionCount = banks.reduce((sum, bank) => sum + bank._count.questions, 0);
 
   return (
-    <main className="page workbench-home">
-      <section className="workbench-hero">
-        <div className="workbench-intro">
-          <div className="workbench-title">
-            <span className="badge good">角色工作台 · 练习 · 运营 · 风控</span>
-            <h1>驾考训练和题库运营，从同一个入口开始。</h1>
-            <p>
-              学员进入练习，教练查看训练数据，管理员维护题库和账号安全。首页按真实使用角色组织入口，减少来回寻找页面。
-            </p>
-          </div>
-
+    <main className="page stack study-home">
+      <section className="study-hero">
+        <div className="study-hero-copy">
+          <span className="badge good">悟空式目录 · 车型 · 科目 · 章节</span>
+          <h1>先选车型，再选科目，直接开始练题。</h1>
+          <p>
+            首页只保留高频路径：练习、模拟考试、错题集、成绩单。题库同步后，学员从这里能像悟空交规一样按目录快速进入章节。
+          </p>
           <div className="workbench-actions">
             <Link className="button primary" href={href}>
               <Gauge size={17} aria-hidden="true" />
               进入工作台
             </Link>
-            <Link className="button" href="/login">
+            <Link className="button" href="/exam">
               <BookOpenCheck size={17} aria-hidden="true" />
-              学生登录
+              开始练习
             </Link>
-            <Link className="button" href="/admin/login">
+            <Link className="button" href="/admin/questions/import/wukong">
               <ShieldCheck size={17} aria-hidden="true" />
-              后台登录
+              悟空同步
             </Link>
-          </div>
-
-          <div className="workbench-metrics" aria-label="系统概览">
-            <div className="workbench-metric">
-              <span>题库</span>
-              <strong>{bankCount}</strong>
-            </div>
-            <div className="workbench-metric">
-              <span>题目</span>
-              <strong>{questionCount}</strong>
-            </div>
-            <div className="workbench-metric">
-              <span>练习模式</span>
-              <strong>5</strong>
-            </div>
           </div>
         </div>
 
-        <aside className="workbench-panel" aria-label="今日入口">
-          <div>
-            <span className="badge">今日任务</span>
-            <h2>高频入口放在首屏</h2>
-            <p className="muted">练习、题库、统计按任务路径排列，登录后还会进入对应角色的默认工作台。</p>
+        <aside className="quick-board" aria-label="快捷入口">
+          <div className="quick-board-head">
+            <span className="badge">今日入口</span>
+            <strong>练习链路</strong>
           </div>
-          <div className="status-board">
-            <Link className="status-row" href="/exam">
-              <span className="status-mark">
-                <BookOpenCheck size={17} aria-hidden="true" />
-              </span>
-              <span>
-                <strong>开始练习</strong>
-                <span>顺序、随机、章节和模拟考试</span>
-              </span>
-              <span className="badge good">学生</span>
-            </Link>
-            <Link className="status-row" href="/admin/questions">
-              <span className="status-mark">
-                <ClipboardList size={17} aria-hidden="true" />
-              </span>
-              <span>
-                <strong>维护题库</strong>
-                <span>录入、导入、筛选和查看题目</span>
-              </span>
-              <span className="badge">后台</span>
-            </Link>
-            <Link className="status-row" href="/admin/student-stats">
-              <span className="status-mark">
-                <BarChart3 size={17} aria-hidden="true" />
-              </span>
-              <span>
-                <strong>查看训练统计</strong>
-                <span>练习次数、正确率和历史记录</span>
-              </span>
-              <span className="badge warn">教练</span>
-            </Link>
-          </div>
-          <div className="mini-chart" aria-hidden="true" />
+          <QuickLink href="/exam" icon={BookOpenCheck} title="章节练习" detail="顺序练习 / 随机练习" />
+          <QuickLink href="/exam" icon={Gauge} title="模拟考试" detail="固定题量计时交卷" />
+          <QuickLink href="/exam/wrong" icon={ClipboardList} title="错题集" detail="未掌握题目复盘" />
+          <QuickLink href="/exam/history" icon={History} title="成绩单" detail="历史分数和答题详情" />
         </aside>
       </section>
 
-      <section className="home-modules" aria-label="核心模块">
-        <article className="home-module">
-          <span className="badge good">
-            <BookOpenCheck size={15} aria-hidden="true" />
-            学生端
-          </span>
-          <h2>按场景练题</h2>
-          <p>顺序练习、随机练习、章节练习和错题复盘。</p>
-        </article>
-        <article className="home-module">
-          <span className="badge warn">
-            <Gauge size={15} aria-hidden="true" />
-            考试
-          </span>
-          <h2>模拟考试</h2>
-          <p>固定题量、计时提交、自动评分和记录回看。</p>
-        </article>
-        <article className="home-module">
-          <span className="badge">
-            <UsersRound size={15} aria-hidden="true" />
-            后台
-          </span>
-          <h2>题库维护</h2>
-          <p>题库、分类、题目、批量导入和权限控制。</p>
-        </article>
-        <article className="home-module">
-          <span className="badge">
-            <History size={15} aria-hidden="true" />
-            安全
-          </span>
-          <h2>登录审计</h2>
-          <p>记录登录设备、IP、失败原因和异地风险。</p>
-        </article>
+      <section className="study-summary" aria-label="系统概览">
+        <Metric title="题库" value={bankCount} />
+        <Metric title="题目" value={questionCount} />
+        <Metric title="车型入口" value={workbench.length} />
+      </section>
+
+      <section className="directory-panel stack" aria-label="车型题库目录">
+        <div className="directory-head">
+          <div>
+            <span className="badge good">题库目录</span>
+            <h2>按车型查看可练科目</h2>
+          </div>
+          <Link className="button" href="/exam">
+            全部练习
+            <ArrowRight size={17} aria-hidden="true" />
+          </Link>
+        </div>
+
+        <div className="vehicle-directory">
+          {WORKBENCH_VEHICLE_CODES.map((code) => {
+            const vehicle = workbench.find((item) => item.code === code);
+            return (
+              <article className="vehicle-row" key={code}>
+                <div>
+                  <strong>{VEHICLE_LABELS[code]}</strong>
+                  <span className="muted">
+                    {vehicle
+                      ? `${vehicle.subjects.length} 个科目 / 专项`
+                      : code === 'C6'
+                        ? '目标站暂未开放'
+                        : '待同步'}
+                  </span>
+                </div>
+                <div className="subject-links">
+                  {vehicle ? (
+                    vehicle.subjects.map((subject) => (
+                      <Link
+                        className="subject-chip"
+                        href={`/exam?vehicle=${vehicle.code}&subject=${subject.code}`}
+                        key={`${vehicle.code}-${subject.code}`}
+                      >
+                        <span>{subject.label}</span>
+                        <strong>{subject.bank._count.questions}</strong>
+                      </Link>
+                    ))
+                  ) : (
+                    <span className="segment disabled">待同步</span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
     </main>
+  );
+}
+
+function QuickLink({
+  href,
+  icon: Icon,
+  title,
+  detail,
+}: {
+  href: string;
+  icon: typeof BookOpenCheck;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <Link className="quick-link" href={href}>
+      <span className="status-mark">
+        <Icon size={17} aria-hidden="true" />
+      </span>
+      <span>
+        <strong>{title}</strong>
+        <span>{detail}</span>
+      </span>
+      <ArrowRight size={16} aria-hidden="true" />
+    </Link>
+  );
+}
+
+function Metric({ title, value }: { title: string; value: number }) {
+  return (
+    <div className="metric-card">
+      <span>{title}</span>
+      <strong className="metric-value">{value}</strong>
+    </div>
   );
 }

@@ -23,6 +23,9 @@ export function WukongImportClient() {
     () => items.filter((item) => selected.includes(item.sourceKey)),
     [items, selected],
   );
+  const bankCount = new Set(items.map((item) => item.bankCode)).size;
+  const selectedBankCount = new Set(selectedItems.map((item) => item.bankCode)).size;
+  const scannedQuestions = items.reduce((sum, item) => sum + item.questionCount, 0);
   const totalQuestions = selectedItems.reduce((sum, item) => sum + item.questionCount, 0);
   const allSelected = items.length > 0 && selected.length === items.length;
 
@@ -37,7 +40,9 @@ export function WukongImportClient() {
       }
       setItems(next.items);
       setSelected(next.items.map((item) => item.sourceKey));
-      setMessage(`扫描完成：${next.items.length} 个章节`);
+      const nextBankCount = new Set(next.items.map((item) => item.bankCode)).size;
+      const nextQuestions = next.items.reduce((sum, item) => sum + item.questionCount, 0);
+      setMessage(`扫描完成：${nextBankCount} 个题库，${next.items.length} 个章节，约 ${nextQuestions} 题`);
     });
   }
 
@@ -49,7 +54,7 @@ export function WukongImportClient() {
       setResult(next);
       setMessage(
         next.ok
-          ? `导入完成：新增 ${next.insertedCount} 题，跳过 ${next.skippedCount} 题`
+          ? `同步完成：新增 ${next.insertedCount} 题，更新 ${next.updatedCount} 题，跳过 ${next.skippedCount} 题`
           : next.error,
       );
     });
@@ -104,7 +109,7 @@ export function WukongImportClient() {
         </button>
         <button type="button" disabled={isPending || selectedItems.length === 0} onClick={onImport}>
           <DownloadCloud size={17} aria-hidden="true" />
-          导入所选
+          同步所选
         </button>
         <button type="button" disabled={items.length === 0} onClick={toggleAll}>
           {allSelected ? <CheckSquare size={17} aria-hidden="true" /> : <Square size={17} aria-hidden="true" />}
@@ -121,8 +126,10 @@ export function WukongImportClient() {
       {items.length > 0 ? (
         <div className="stack">
           <div className="cluster">
-            <span className="badge good">已选 {selectedItems.length} 章</span>
-            <span className="badge">约 {totalQuestions} 题</span>
+            <span className="badge good">扫描 {bankCount} 个题库</span>
+            <span className="badge">共 {items.length} 章</span>
+            <span className="badge">约 {scannedQuestions} 题</span>
+            <span className="badge warn">已选 {selectedBankCount} 个题库 / {selectedItems.length} 章 / 约 {totalQuestions} 题</span>
           </div>
           <div className="table-wrap">
             <table>
@@ -156,6 +163,18 @@ export function WukongImportClient() {
         </div>
       ) : null}
 
+      {result?.ok ? (
+        <div className="grid" aria-label="同步结果">
+          <ResultMetric label="题库" value={result.bankCount} />
+          <ResultMetric label="章节" value={result.chapterCount} />
+          <ResultMetric label="读取题目" value={result.questionCount} />
+          <ResultMetric label="新增" value={result.insertedCount} />
+          <ResultMetric label="更新" value={result.updatedCount} />
+          <ResultMetric label="跳过" value={result.skippedCount} />
+          <ResultMetric label="图片失败" value={result.imageFailedCount} />
+        </div>
+      ) : null}
+
       {result?.ok && result.errors.length > 0 ? (
         <div className="error">
           {result.errors.slice(0, 6).join('；')}
@@ -163,5 +182,14 @@ export function WukongImportClient() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+function ResultMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="metric-card compact-metric">
+      <span>{label}</span>
+      <strong className="metric-value">{value}</strong>
+    </div>
   );
 }

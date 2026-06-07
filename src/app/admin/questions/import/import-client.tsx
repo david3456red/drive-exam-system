@@ -61,7 +61,9 @@ export function ImportClient({ banks }: { banks: BankOption[] }) {
           ? await commitJsonImportAction(jsonPayload, bankId, imageAttachments)
           : await commitExcelImportAction(excelBytes, bankId, imageAttachments);
       if (result.ok) {
-        setMessage(`导入完成：新增 ${result.insertedCount} 条，跳过 ${result.skippedCount} 条`);
+        setMessage(
+          `导入完成：新增 ${result.insertedCount} 条，更新 ${result.updatedCount} 条，跳过 ${result.skippedCount} 条`,
+        );
         setPreview(null);
       } else {
         setMessage(result.error);

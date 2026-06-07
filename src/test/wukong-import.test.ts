@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_WUKONG_BANKS,
   buildWukongImageUrl,
   downloadWukongImage,
   fetchWukongQuestions,
   loginWukong,
   mapWukongQuestionToImportRow,
   parseWukongCatalogHtml,
+  scanWukongCatalog,
 } from '@/lib/import/wukong';
 
 describe('wukong import mapping', () => {
@@ -113,12 +115,58 @@ describe('wukong import mapping', () => {
         zj: '113',
         zx: '',
         fl: 'hm',
-        sourceKey: 'C1:K1:21:113',
+        sourceKey: 'C1:K1:21:113:-:hm',
       },
     ]);
     expect(buildWukongImageUrl('20231130102751.jpg')).toBe(
       'http://wukongjiaogui.com/UpLoad/image/20231130102751.jpg',
     );
+  });
+
+  it('uses the current visible Wukong bank configuration when scanning', async () => {
+    expect(DEFAULT_WUKONG_BANKS).toHaveLength(17);
+    expect(DEFAULT_WUKONG_BANKS.find((bank) => bank.bankCode === 'C1_TS')).toMatchObject({
+      km: '210',
+      xkm: 'ts',
+    });
+    expect(DEFAULT_WUKONG_BANKS.find((bank) => bank.bankCode === 'M1_K4')).toMatchObject({
+      km: '19',
+    });
+
+    const calls: string[] = [];
+    const fetchImpl = async (input: RequestInfo | URL): Promise<Response> => {
+      calls.push(String(input));
+      const prefix = '<a href="stxylx.aspx?km=21&zj=113&fl=hm">chapter';
+      const suffix = '</a>';
+      return new Response(
+        Uint8Array.from([
+          ...Buffer.from(prefix),
+          0xa3,
+          0xa8,
+          0x31,
+          0xcc,
+          0xe2,
+          0xa3,
+          0xa9,
+          ...Buffer.from(suffix),
+        ]),
+      );
+    };
+
+    const items = await scanWukongCatalog(
+      { cookie: 'session=ok' },
+      [
+        { bankCode: 'C1_TS', bankName: '小车脱审', vehicleCode: 'C1', subjectCode: 'TS', km: '210', xkm: 'ts' },
+        { bankCode: 'M1_K4', bankName: '摩托车科目四', vehicleCode: 'M1', subjectCode: 'K4', km: '19' },
+      ],
+      fetchImpl,
+    );
+
+    expect(calls).toEqual([
+      'http://wukongjiaogui.com/home.aspx?flz=C1&km=210&xkm=ts',
+      'http://wukongjiaogui.com/home.aspx?flz=M1&km=19',
+    ]);
+    expect(items.map((item) => item.bankCode)).toEqual(['C1_TS', 'M1_K4']);
   });
 
   it('logs in, fetches paged questions, and downloads images with a supplied fetch', async () => {

@@ -99,7 +99,7 @@ describe('commitImport', () => {
       },
     ], { bankId });
 
-    expect(result).toEqual({ ok: true, insertedCount: 2, skippedCount: 1 });
+    expect(result).toEqual({ ok: true, insertedCount: 2, updatedCount: 0, skippedCount: 1 });
 
     expect(await prisma.question.count()).toBe(2);
     expect(await prisma.category.count()).toBe(1);
@@ -124,7 +124,7 @@ describe('commitImport', () => {
       },
     ]);
 
-    expect(result).toEqual({ ok: true, insertedCount: 1, skippedCount: 0 });
+    expect(result).toEqual({ ok: true, insertedCount: 1, updatedCount: 0, skippedCount: 0 });
 
     const question = await prisma.question.findFirstOrThrow();
     expect(question.bankId).toBe(bankId);
@@ -148,7 +148,7 @@ describe('commitImport', () => {
       },
     ], { bankId });
 
-    expect(result).toEqual({ ok: true, insertedCount: 1, skippedCount: 0 });
+    expect(result).toEqual({ ok: true, insertedCount: 1, updatedCount: 0, skippedCount: 0 });
 
     const question = await prisma.question.findFirstOrThrow();
     expect(question.bankId).toBe(bankId);
@@ -181,7 +181,7 @@ describe('commitImport', () => {
       skippedCount: prepared.skippedCount,
     });
 
-    expect(result).toEqual({ ok: true, insertedCount: 1, skippedCount: 0 });
+    expect(result).toEqual({ ok: true, insertedCount: 1, updatedCount: 0, skippedCount: 0 });
     const question = await prisma.question.findFirstOrThrow();
  expect(question.imageUrl).toBe('/uploads/questions/integration-image.png');
  });
@@ -222,7 +222,109 @@ describe('commitImport', () => {
  },
  ], { bankId });
 
- expect(result).toEqual({ ok: true, insertedCount: 0, skippedCount: 1 });
+ expect(result).toEqual({ ok: true, insertedCount: 0, updatedCount: 0, skippedCount: 1 });
  expect(await prisma.question.count()).toBe(1);
+ });
+
+ it('updates rows already imported from the same source when requested', async () => {
+ const existingCategory = await prisma.category.create({ data: { name: 'old category' } });
+ const question = await prisma.question.create({
+ data: {
+ bankId,
+ type: 'SINGLE',
+ content: 'existing source question',
+ imageUrl: '/uploads/questions/old.png',
+ options: JSON.stringify([
+ { key: 'A', text: 'wrong' },
+ { key: 'B', text: 'right' },
+ ]),
+ answer: 'B',
+ explanation: null,
+ tags: JSON.stringify(['old']),
+ sourceSite: 'wukong',
+ sourceQuestionId: '6922',
+ sourceMeta: JSON.stringify({ sourceKey: 'C1:K1:21:113' }),
+ categories: { create: { categoryId: existingCategory.id } },
+ },
+ });
+
+ const result = await commitImportRows(prisma, [
+ {
+ type: 'SINGLE',
+ content: 'updated source question',
+ optionA: 'new wrong',
+ optionC: 'new right',
+ answer: 'C',
+ categories: ['new category'],
+ explanation: 'updated explanation',
+ tags: ['wukong', 'updated'],
+ bankCode,
+ sourceSite: 'wukong',
+ sourceQuestionId: '6922',
+ sourceMeta: JSON.stringify({ sourceKey: 'C1:K1:21:113:-:hm' }),
+ },
+ ], {
+ bankId,
+ duplicateStrategy: 'update',
+ preserveExistingImageOnUpdate: true,
+ });
+
+ expect(result).toEqual({ ok: true, insertedCount: 0, updatedCount: 1, skippedCount: 0 });
+ const updated = await prisma.question.findUniqueOrThrow({
+ where: { id: question.id },
+ include: { categories: { include: { category: true } } },
+ });
+ expect(updated.content).toBe('updated source question');
+ expect(updated.answer).toBe('C');
+ expect(updated.imageUrl).toBe('/uploads/questions/old.png');
+ expect(JSON.parse(updated.options)).toEqual([
+ { key: 'A', text: 'new wrong' },
+ { key: 'C', text: 'new right' },
+ ]);
+ expect(updated.categories.map((item) => item.category.name)).toEqual(['new category']);
+ });
+
+ it('can merge categories when updating an imported source row', async () => {
+ const existingCategory = await prisma.category.create({ data: { name: 'chapter one' } });
+ const question = await prisma.question.create({
+ data: {
+ bankId,
+ type: 'SINGLE',
+ content: 'source question',
+ imageUrl: null,
+ options: JSON.stringify([
+ { key: 'A', text: 'wrong' },
+ { key: 'B', text: 'right' },
+ ]),
+ answer: 'B',
+ explanation: null,
+ tags: JSON.stringify(['old']),
+ sourceSite: 'wukong',
+ sourceQuestionId: '7000',
+ categories: { create: { categoryId: existingCategory.id } },
+ },
+ });
+
+ const result = await commitImportRows(prisma, [
+ {
+ type: 'SINGLE',
+ content: 'source question',
+ optionA: 'wrong',
+ optionB: 'right',
+ answer: 'B',
+ categories: ['chapter two'],
+ tags: ['wukong'],
+ sourceSite: 'wukong',
+ sourceQuestionId: '7000',
+ },
+ ], { bankId, duplicateStrategy: 'update', categoryStrategy: 'merge' });
+
+ expect(result).toEqual({ ok: true, insertedCount: 0, updatedCount: 1, skippedCount: 0 });
+ const links = await prisma.questionCategory.findMany({
+ where: { questionId: question.id },
+ include: { category: true },
+ orderBy: { category: { name: 'asc' } },
+ });
+ expect(links.map((item) => item.category.name)).toEqual(['chapter one', 'chapter two']);
  });
 });

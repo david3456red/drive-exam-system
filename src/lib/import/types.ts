@@ -100,13 +100,14 @@ export interface PreviewResult {
 /**
  * 提交阶段的结果。
  *
- * - 成功:`insertedCount` 为本次实际写入题目的行数,`skippedCount` 为
- *   被跳过的非法行数(与 `PreviewResult.invalid.length` 对齐)。
+ * - 成功:`insertedCount` 为本次实际写入题目的行数,`updatedCount` 为
+ *   本次按来源标识更新的既有题目数,`skippedCount` 为被跳过的非法行数
+ *   (与 `PreviewResult.invalid.length` 对齐)或重复行数。
  * - 失败:`error` 为不可恢复错误的简短文案(如鉴权失败、事务异常等);
  *   行级错误一律走 `skippedCount` 通道,不会进入 `error`。
  */
 export type CommitResult =
-  | { ok: true; insertedCount: number; skippedCount: number }
+  | { ok: true; insertedCount: number; updatedCount: number; skippedCount: number }
   | { ok: false; error: string };
 
 // ============================================================

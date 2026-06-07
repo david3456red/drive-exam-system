@@ -366,6 +366,182 @@ button:disabled,
   gap: 22px;
 }
 
+.study-home {
+  gap: 18px;
+}
+
+.study-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.study-hero-copy,
+.quick-board,
+.directory-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.study-hero-copy {
+  min-height: 330px;
+  padding: 30px;
+  display: grid;
+  align-content: center;
+  gap: 18px;
+}
+
+.study-hero-copy h1 {
+  margin: 0;
+  max-width: 14ch;
+  color: var(--ink);
+  font-size: 2.45rem;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.study-hero-copy p {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--muted);
+}
+
+.quick-board {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.quick-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quick-link {
+  min-height: 72px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.quick-link:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.quick-link strong,
+.quick-link span span {
+  display: block;
+}
+
+.quick-link span span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.study-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.directory-panel {
+  padding: 18px;
+}
+
+.directory-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.directory-head h2 {
+  margin: 8px 0 0;
+}
+
+.vehicle-directory {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.vehicle-row {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.22fr) 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.vehicle-row:last-child {
+  border-bottom: 0;
+}
+
+.vehicle-row > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.subject-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subject-chip {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-weight: 800;
+}
+
+.subject-chip strong {
+  color: var(--primary-strong);
+}
+
+.subject-chip:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.question-cell {
+  max-width: 520px;
+}
+
+.compact-metric {
+  min-height: 88px;
+}
+
+.compact-metric .metric-value {
+  font-size: 1.72rem;
+}
+
 .workbench-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
@@ -1043,7 +1219,7 @@ tbody tr:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
-  align-items: end;
+  align-items: flex-end;
   background:
     linear-gradient(135deg, rgb(20 105 216 / 9%), transparent 42%),
     linear-gradient(315deg, rgb(216 135 23 / 9%), transparent 38%),
@@ -1074,6 +1250,7 @@ tbody tr:hover {
   }
 
   .workbench-hero,
+  .study-hero,
   .auth-shell,
   .admin-hero,
   .exam-session-layout {
@@ -1091,6 +1268,7 @@ tbody tr:hover {
   }
 
   .home-modules,
+  .study-summary,
   .admin-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1126,6 +1304,7 @@ tbody tr:hover {
   }
 
   .page-title h1,
+  .study-hero-copy h1,
   .workbench-title h1,
   .login-panel h1,
   .login-context h1 {
@@ -1134,6 +1313,7 @@ tbody tr:hover {
   }
 
   .workbench-metrics,
+  .study-summary,
   .home-modules,
   .login-context-grid,
   .admin-summary {
@@ -1143,6 +1323,9 @@ tbody tr:hover {
   .login-context,
   .login-panel,
   .admin-hero,
+  .study-hero-copy,
+  .quick-board,
+  .directory-panel,
   .workbench-intro,
   .workbench-panel,
   .panel,
@@ -1156,6 +1339,15 @@ tbody tr:hover {
 
   .status-row .badge {
     grid-column: 2;
+  }
+
+  .vehicle-row {
+    grid-template-columns: 1fr;
+  }
+
+  .directory-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .answer-card-grid {
