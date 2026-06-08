@@ -33,6 +33,7 @@ type ImageCheckMode = 'none' | 'metadata' | 'hash';
 type CliOptions = {
   checkImages: ImageCheckMode;
   safePrune: boolean;
+  bankCodes: string[];
   itemConcurrency: number;
   pageConcurrency: number;
   imageConcurrency: number;
@@ -72,8 +73,18 @@ main()
   });
 
 async function main(): Promise<void> {
+  const banks = selectBanks([...DEFAULT_WUKONG_BANKS], options.bankCodes);
+  const missingBankCodes = options.bankCodes.filter(
+    (code) => !banks.some((bank) => bank.bankCode === code),
+  );
+  if (missingBankCodes.length > 0) {
+    console.error(`[wukong:audit] WUKONG_BANK_CODES/--bank-codes 未匹配到题库：${missingBankCodes.join(',')}`);
+    process.exitCode = 1;
+    return;
+  }
+
   const session = await loginWukong(credentials);
-  const catalog = await scanWukongCatalog(session, [...DEFAULT_WUKONG_BANKS]);
+  const catalog = await scanWukongCatalog(session, banks);
   const catalogByBank = new Map<string, { chapters: number; officialRefs: number; fetchedRefs: number }>();
   const expectedRows: ImportRow[] = [];
 
@@ -111,7 +122,7 @@ async function main(): Promise<void> {
       .filter((key): key is string => Boolean(key)),
   );
   const effectiveDiffs = allDiffs.filter((diff) => diff.kind !== 'extra' || !prunedKeys.has(diff.key));
-  const rows = DEFAULT_WUKONG_BANKS.map((bank): BankReportRow => {
+  const rows = banks.map((bank): BankReportRow => {
     const bankExpected = expectedByBank.get(bank.bankCode) ?? [];
     const bankLocal = localByBank.get(bank.bankCode) ?? [];
     const bankDiffs = effectiveDiffs.filter((diff) => diff.bankCode === bank.bankCode);
@@ -140,6 +151,7 @@ async function main(): Promise<void> {
     seconds: Math.round((Date.now() - startedAt) / 1000),
     checkImages: options.checkImages,
     safePrune: options.safePrune,
+    bankCodes: options.bankCodes,
     summary: {
       banks: rows.length,
       catalogChapters: catalog.length,
@@ -408,10 +420,17 @@ function parseCliOptions(args: string[]): CliOptions {
   return {
     checkImages: readImageCheck(args.find((arg) => arg.startsWith('--check-images='))?.split('=')[1]),
     safePrune: args.includes('--safe-prune'),
+    bankCodes: readList(args.find((arg) => arg.startsWith('--bank-codes='))?.split('=')[1] ?? process.env.WUKONG_BANK_CODES),
     itemConcurrency: readPositiveInt(args, '--item-concurrency', 6),
     pageConcurrency: readPositiveInt(args, '--page-concurrency', 8),
     imageConcurrency: readPositiveInt(args, '--image-concurrency', 4),
   };
+}
+
+function selectBanks<T extends { bankCode: string }>(banks: T[], bankCodes: string[]): T[] {
+  if (bankCodes.length === 0) return banks;
+  const wanted = new Set(bankCodes);
+  return banks.filter((bank) => wanted.has(bank.bankCode));
 }
 
 function readImageCheck(value: string | undefined): ImageCheckMode {
@@ -423,6 +442,13 @@ function readPositiveInt(args: string[], name: string, fallback: number): number
   const raw = args.find((arg) => arg.startsWith(`${name}=`))?.split('=')[1];
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readList(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function readCredentials(): { username: string; password: string } {

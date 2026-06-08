@@ -78,6 +78,12 @@ export type WukongQuestionPage = {
   infoContent: WukongQuestion[];
 };
 
+export type FetchWukongQuestionsOptions = {
+  pageConcurrency?: number;
+  retries?: number;
+  retryDelayMs?: number;
+};
+
 export type MapWukongQuestionOptions = {
   bankCode: string;
   categories: string[];
@@ -129,9 +135,18 @@ export async function fetchWukongQuestions(
   session: WukongSession,
   item: WukongCatalogItem,
   fetchImpl: typeof fetch = fetch,
-  options: { pageConcurrency?: number } = {},
+  options: FetchWukongQuestionsOptions = {},
 ): Promise<WukongQuestion[]> {
-  const first = await fetchWukongQuestionPage(session, item, 1, fetchImpl);
+  const retries = Math.max(0, options.retries ?? 2);
+  const retryDelayMs = Math.max(0, options.retryDelayMs ?? 250);
+  const first = await fetchWukongQuestionPageWithRetry(
+    session,
+    item,
+    1,
+    fetchImpl,
+    retries,
+    retryDelayMs,
+  );
   const pages: WukongQuestion[][] = [];
   pages[0] = first.infoContent;
   const concurrency = Math.max(1, Math.min(options.pageConcurrency ?? 6, 10));
@@ -141,7 +156,14 @@ export async function fetchWukongQuestions(
     while (nextPage <= first.pagecount) {
       const page = nextPage;
       nextPage++;
-      const next = await fetchWukongQuestionPage(session, item, page, fetchImpl);
+      const next = await fetchWukongQuestionPageWithRetry(
+        session,
+        item,
+        page,
+        fetchImpl,
+        retries,
+        retryDelayMs,
+      );
       pages[page - 1] = next.infoContent;
     }
   }
@@ -149,7 +171,13 @@ export async function fetchWukongQuestions(
   await Promise.all(
     Array.from({ length: Math.min(concurrency, Math.max(first.pagecount - 1, 0)) }, () => worker()),
   );
-  return pages.flat();
+  const questions = pages.flat();
+  if (questions.length !== item.questionCount) {
+    throw new Error(
+      `WUKONG_QUESTION_COUNT_MISMATCH:${item.sourceKey}:expected=${item.questionCount}:actual=${questions.length}`,
+    );
+  }
+  return questions;
 }
 
 export function parseWukongCatalogHtml(
@@ -262,7 +290,58 @@ async function fetchWukongQuestionPage(
       page: String(page),
     }),
   });
-  return JSON.parse(await decodeWukongResponse(response)) as WukongQuestionPage;
+  if (!response.ok) {
+    throw new Error(`WUKONG_PAGE_HTTP_${response.status}:${item.sourceKey}:page=${page}`);
+  }
+  return parseWukongQuestionPage(await decodeWukongResponse(response), item, page);
+}
+
+async function fetchWukongQuestionPageWithRetry(
+  session: WukongSession,
+  item: WukongCatalogItem,
+  page: number,
+  fetchImpl: typeof fetch,
+  retries: number,
+  retryDelayMs: number,
+): Promise<WukongQuestionPage> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetchWukongQuestionPage(session, item, page, fetchImpl);
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) {
+        await sleep(retryDelayMs * 2 ** attempt);
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`WUKONG_PAGE_FETCH_FAILED:${item.sourceKey}:page=${page}`);
+}
+
+function parseWukongQuestionPage(
+  json: string,
+  item: WukongCatalogItem,
+  page: number,
+): WukongQuestionPage {
+  const parsed = JSON.parse(json) as Partial<WukongQuestionPage>;
+  if (!Array.isArray(parsed.infoContent) || !Number.isFinite(Number(parsed.pagecount))) {
+    throw new Error(`WUKONG_PAGE_SHAPE_INVALID:${item.sourceKey}:page=${page}`);
+  }
+
+  return {
+    pindex: Number(parsed.pindex ?? page),
+    userCount: Number(parsed.userCount ?? parsed.infoContent.length),
+    pagecount: Math.max(1, Number(parsed.pagecount)),
+    infoContent: parsed.infoContent,
+  };
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function fetchWukongText(

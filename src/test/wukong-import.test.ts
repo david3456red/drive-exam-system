@@ -220,4 +220,80 @@ describe('wukong import mapping', () => {
     expect(questions).toHaveLength(2);
     expect(image).toEqual({ name: 'a.png', type: 'image/png', size: 3, bytes: [1, 2, 3] });
   });
+
+  it('retries transient Wukong page fetch failures', async () => {
+    let pageTwoAttempts = 0;
+    const fetchImpl = async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const body = init?.body as URLSearchParams | undefined;
+      const page = body?.get('page') ?? '1';
+      if (page === '2') {
+        pageTwoAttempts++;
+        if (pageTwoAttempts === 1) {
+          return new Response('temporary failure', { status: 500 });
+        }
+      }
+      return new Response(
+        JSON.stringify({
+          pindex: Number(page),
+          userCount: 2,
+          pagecount: 2,
+          infoContent: [{ Id: page, Name: `题目 ${page}`, txid: 12, Source: '×' }],
+        }),
+      );
+    };
+
+    const questions = await fetchWukongQuestions(
+      { cookie: 'session=ok' },
+      {
+        bankCode: 'C1_K1',
+        bankName: '小车科目一',
+        vehicleCode: 'C1',
+        subjectCode: 'K1',
+        title: '内部考题',
+        questionCount: 2,
+        km: '21',
+        zj: '113',
+        zx: '',
+        fl: 'hm',
+        sourceKey: 'C1:K1:21:113',
+      },
+      fetchImpl,
+      { retryDelayMs: 0 },
+    );
+
+    expect(pageTwoAttempts).toBe(2);
+    expect(questions.map((question) => question.Id)).toEqual(['1', '2']);
+  });
+
+  it('rejects partial Wukong chapter reads when counts do not match the catalog', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      new Response(
+        JSON.stringify({
+          pindex: 1,
+          userCount: 1,
+          pagecount: 1,
+          infoContent: [],
+        }),
+      );
+
+    await expect(
+      fetchWukongQuestions(
+        { cookie: 'session=ok' },
+        {
+          bankCode: 'C1_K1',
+          bankName: '小车科目一',
+          vehicleCode: 'C1',
+          subjectCode: 'K1',
+          title: '内部考题',
+          questionCount: 1,
+          km: '21',
+          zj: '113',
+          zx: '',
+          fl: 'hm',
+          sourceKey: 'C1:K1:21:113',
+        },
+        fetchImpl,
+      ),
+    ).rejects.toThrow(/WUKONG_QUESTION_COUNT_MISMATCH/);
+  });
 });

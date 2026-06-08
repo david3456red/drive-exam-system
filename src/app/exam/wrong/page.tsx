@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { toggleMasteredAction } from '@/app/exam/actions';
+import { QuestionAnalysis } from '@/components/question-analysis';
 import { prisma } from '@/lib/db';
 import { formatDateTime } from '@/lib/display';
 import { listWrongQuestions, type MasteredFilter } from '@/lib/exam-engine/queries';
@@ -93,6 +94,7 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
               <th>题库</th>
               <th>题目</th>
               <th>复盘</th>
+              <th>解析</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -115,6 +117,9 @@ export default async function WrongPage({ searchParams }: WrongPageProps) {
                   错误 {item.wrongCount} 次，连续答对 {item.rightCount} 次
                   <br />
                   <span className="muted">最近 {formatDateTime(item.lastWrongAt)}</span>
+                </td>
+                <td>
+                  <QuestionAnalysis answer={item.answer} explanation={item.explanation} />
                 </td>
                 <td>
                   <form action={toggleMasteredAction}>

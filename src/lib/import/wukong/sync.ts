@@ -100,58 +100,62 @@ export async function syncWukongCatalog({
       });
 
       const bank = await upsertWukongBank(prisma, item);
-      const questions = await fetchWukongQuestions(session, item, fetchImpl);
-      questionCount += questions.length;
-      const rows = mergeRowsBySource(
-        questions.map((question) => mapWukongQuestion(question, item)),
-      );
-      const rowsForImagePreparation = await skipImagesAlreadyStored(prisma, bank.id, rows);
+      try {
+        const questions = await fetchWukongQuestions(session, item, fetchImpl);
+        questionCount += questions.length;
+        const rows = mergeRowsBySource(
+          questions.map((question) => mapWukongQuestion(question, item)),
+        );
+        const rowsForImagePreparation = await skipImagesAlreadyStored(prisma, bank.id, rows);
 
-      const imageNames = downloadImages ? imageNamesForRows(rowsForImagePreparation) : [];
-      const failedImages = new Set<string>();
-      const images = await mapWithConcurrency(imageNames, 4, async (imageName) => {
-        try {
-          return await downloadWukongImage(imageName, session, fetchImpl);
-        } catch {
-          imageFailedCount++;
-          failedImages.add(imageName);
-          errors.push(`图片下载失败：${item.bankName}/${item.title}/${imageName}`);
-          return null;
+        const imageNames = downloadImages ? imageNamesForRows(rowsForImagePreparation) : [];
+        const failedImages = new Set<string>();
+        const images = await mapWithConcurrency(imageNames, 4, async (imageName) => {
+          try {
+            return await downloadWukongImage(imageName, session, fetchImpl);
+          } catch {
+            imageFailedCount++;
+            failedImages.add(imageName);
+            errors.push(`图片下载失败：${item.bankName}/${item.title}/${imageName}`);
+            return null;
+          }
+        }).then((items) => items.filter((image): image is NonNullable<typeof image> => Boolean(image)));
+
+        const rowsWithImageFallback = rowsForImagePreparation.map((row) => {
+          if (!downloadImages) return { ...row, imageUrl: undefined };
+          const name = imageAttachmentReference(row.imageUrl);
+          return name && failedImages.has(name) ? { ...row, imageUrl: undefined } : row;
+        });
+
+        const prepared = await prepareImportRowsWithImages(
+          rowsSource,
+          rowsWithImageFallback,
+          images,
+          { maxTotalBytes: Number.MAX_SAFE_INTEGER },
+        );
+        const result = await commitImportRows(prisma, prepared.rows, {
+          bankId: bank.id,
+          skippedCount: prepared.skippedCount,
+          duplicateStrategy: 'update',
+          preserveExistingImageOnUpdate: true,
+          categoryStrategy: 'merge',
+        });
+
+        if (result.ok) {
+          insertedCount += result.insertedCount;
+          updatedCount += result.updatedCount;
+          skippedCount += result.skippedCount;
+          imageCount += prepared.rows.filter((row) => Boolean(row.imageUrl)).length;
+          explanationCount += prepared.rows.filter((row) => Boolean(row.explanation)).length;
+          if (!cleanedBankIds.has(bank.id)) {
+            await cleanupWukongSeedSampleQuestions(prisma, bank.id);
+            cleanedBankIds.add(bank.id);
+          }
+        } else {
+          errors.push(`${item.bankName}/${item.title}：${result.error}`);
         }
-      }).then((items) => items.filter((image): image is NonNullable<typeof image> => Boolean(image)));
-
-      const rowsWithImageFallback = rowsForImagePreparation.map((row) => {
-        if (!downloadImages) return { ...row, imageUrl: undefined };
-        const name = imageAttachmentReference(row.imageUrl);
-        return name && failedImages.has(name) ? { ...row, imageUrl: undefined } : row;
-      });
-
-      const prepared = await prepareImportRowsWithImages(
-        rowsSource,
-        rowsWithImageFallback,
-        images,
-        { maxTotalBytes: Number.MAX_SAFE_INTEGER },
-      );
-      const result = await commitImportRows(prisma, prepared.rows, {
-        bankId: bank.id,
-        skippedCount: prepared.skippedCount,
-        duplicateStrategy: 'update',
-        preserveExistingImageOnUpdate: true,
-        categoryStrategy: 'merge',
-      });
-
-      if (result.ok) {
-        insertedCount += result.insertedCount;
-        updatedCount += result.updatedCount;
-        skippedCount += result.skippedCount;
-        imageCount += prepared.rows.filter((row) => Boolean(row.imageUrl)).length;
-        explanationCount += prepared.rows.filter((row) => Boolean(row.explanation)).length;
-        if (!cleanedBankIds.has(bank.id)) {
-          await cleanupWukongSeedSampleQuestions(prisma, bank.id);
-          cleanedBankIds.add(bank.id);
-        }
-      } else {
-        errors.push(`${item.bankName}/${item.title}：${result.error}`);
+      } catch (error) {
+        errors.push(`${item.bankName}/${item.title}：${formatChapterSyncError(error)}`);
       }
     }
 
@@ -308,6 +312,17 @@ function imageAttachmentReference(imageUrl: string | undefined): string | null {
 
 function unique(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function formatChapterSyncError(error: unknown): string {
+  if (!(error instanceof Error)) return '章节同步失败';
+  const countMismatch = error.message.match(
+    /^WUKONG_QUESTION_COUNT_MISMATCH:.+:expected=(\d+):actual=(\d+)$/,
+  );
+  if (countMismatch) {
+    return `题量不一致，预期 ${countMismatch[1]} 题，实际读取 ${countMismatch[2]} 题`;
+  }
+  return error.message.startsWith('WUKONG_') ? '章节读取失败，请稍后重试' : error.message;
 }
 
 async function mapWithConcurrency<T, R>(

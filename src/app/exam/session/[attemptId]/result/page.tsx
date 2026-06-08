@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Hash, XCircle } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
+import { QuestionAnalysis } from '@/components/question-analysis';
 import { QuestionImage } from '@/components/question-image';
 import { prisma } from '@/lib/db';
 import { EXAM_MODE_LABEL, EXAM_STATUS_LABEL, formatDuration, parseQuestionOptions } from '@/lib/display';
@@ -94,7 +95,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
                   </div>
                 ))}
               </div>
-              {record.question.explanation ? <p className="muted">{record.question.explanation}</p> : null}
+              <QuestionAnalysis answer={record.question.answer} explanation={record.question.explanation} />
             </article>
           );
         })}

@@ -78,15 +78,15 @@ export type Page<T> = {
 /**
  * 错题列表项。
  *
- * 故意只挑选给前端列表展示用的字段,既避免把整张 `Question` 实体的 `options` /
- * `answer` / `explanation` 等内容序列化到列表 payload(分页页大表会显著放大),
- * 也明确表达"列表态不需要这些字段"。
+ * 故意只挑选给前端列表展示用的字段,并带上错题复盘需要的答案与解析。
  */
 export type WrongQuestionView = {
   id: string;
   questionId: string;
   questionContent: string;
   questionType: QuestionType;
+  answer: string;
+  explanation: string | null;
   bankId: string;
   bankName: string;
   mastered: boolean;
@@ -233,6 +233,8 @@ export async function listWrongQuestions(
           select: {
             content: true,
             type: true,
+            answer: true,
+            explanation: true,
             bankId: true,
             bank: { select: { name: true } },
           },
@@ -247,6 +249,8 @@ export async function listWrongQuestions(
     questionId: r.questionId,
     questionContent: r.question.content,
     questionType: r.question.type as QuestionType,
+    answer: r.question.answer,
+    explanation: r.question.explanation,
     bankId: r.question.bankId,
     bankName: r.question.bank.name,
     mastered: r.mastered,

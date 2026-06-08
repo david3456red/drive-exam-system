@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle2, ClipboardList, Pencil, Trash2 } from 'lucide-r
 import { notFound } from 'next/navigation';
 
 import { deleteQuestionAction } from '@/app/admin/actions';
+import { QuestionAnalysis } from '@/components/question-analysis';
 import { QuestionImage } from '@/components/question-image';
 import { prisma } from '@/lib/db';
 import { QUESTION_TYPE_LABEL, parseQuestionOptions } from '@/lib/display';
@@ -84,7 +85,7 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
             </div>
           ))}
         </div>
-        {question.explanation ? <p>{question.explanation}</p> : null}
+        <QuestionAnalysis answer={question.answer} explanation={question.explanation} />
         <div className="cluster">
           {question.categories.map((item) => (
             <span className="badge" key={item.categoryId}>

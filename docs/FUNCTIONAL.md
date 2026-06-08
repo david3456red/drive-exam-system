@@ -52,7 +52,7 @@
 - `/exam/session/[attemptId]/result`：展示状态、得分、正确数、用时和逐题解析。
 - `/exam/history`：展示已完成或已放弃会话。
 - `/exam/history/[attemptId]`：查看单次历史详情。
-- `/exam/wrong`：查看错题，按题库和掌握状态筛选，支持标记/取消掌握。
+- `/exam/wrong`：查看错题，按题库和掌握状态筛选，支持查看解析、标记/取消掌握。
 
 ## 后台功能
 
