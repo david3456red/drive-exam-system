@@ -7,7 +7,7 @@ type AdminLoginPageProps = {
 };
 
 export default async function AdminLoginPage({ searchParams }: AdminLoginPageProps) {
-  await redirectAfterLogin();
+  await redirectAfterLogin('admin');
   return (
     <main className="page auth-page">
       <section className="auth-shell">

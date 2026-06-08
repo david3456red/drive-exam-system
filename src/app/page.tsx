@@ -5,7 +5,6 @@ import {
   ClipboardList,
   Gauge,
   History,
-  ShieldCheck,
 } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
@@ -14,12 +13,14 @@ import {
   WORKBENCH_VEHICLE_CODES,
   buildExamWorkbench,
 } from '@/lib/exam-workbench';
+import { canUsePublicPracticeLinks } from '@/lib/login-flow';
 import { getCurrentUser } from '@/lib/server-session';
-import { homeForRole } from '@/lib/session-shared';
 
 export default async function HomePage() {
   const user = getCurrentUser();
-  const href = user ? homeForRole(user.roleCode) : '/login';
+  const canUsePracticeLinks = canUsePublicPracticeLinks(user?.roleCode);
+  const primaryHref = user ? '/exam' : '/login';
+  const primaryLabel = user ? '继续练习' : '学生登录';
   const banks = await prisma.questionBank.findMany({
     orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     include: { _count: { select: { questions: true } } },
@@ -35,24 +36,29 @@ export default async function HomePage() {
           <span className="badge good">悟空式目录 · 车型 · 科目 · 章节</span>
           <h1>先选车型，再选科目，直接开始练题。</h1>
           <p>
-            首页只保留高频路径：练习、模拟考试、错题集、成绩单。题库同步后，学员从这里能像悟空交规一样按目录快速进入章节。
-          </p>
-          <div className="workbench-actions">
-            <Link className="button primary" href={href}>
-              <Gauge size={17} aria-hidden="true" />
-              进入工作台
-            </Link>
-            <Link className="button" href="/exam">
-              <BookOpenCheck size={17} aria-hidden="true" />
-              开始练习
-            </Link>
-            <Link className="button" href="/admin/questions/import/wukong">
-              <ShieldCheck size={17} aria-hidden="true" />
-              悟空同步
-            </Link>
-          </div>
+          首页只保留高频路径：练习、模拟考试、错题集、成绩单。题库同步后，学员从这里能像悟空交规一样按目录快速进入章节。
+        </p>
+        <div className="workbench-actions">
+          {canUsePracticeLinks ? (
+            <>
+              <Link className="button primary" href={primaryHref}>
+                <Gauge size={17} aria-hidden="true" />
+                {primaryLabel}
+              </Link>
+              <Link className="button" href="/exam">
+                <BookOpenCheck size={17} aria-hidden="true" />
+                开始练习
+              </Link>
+            </>
+          ) : (
+            <span className="button ghost-button" aria-label="后台账号已登录">
+              后台账号已登录
+            </span>
+          )}
         </div>
+      </div>
 
+      {canUsePracticeLinks ? (
         <aside className="quick-board" aria-label="快捷入口">
           <div className="quick-board-head">
             <span className="badge">今日入口</span>
@@ -63,6 +69,7 @@ export default async function HomePage() {
           <QuickLink href="/exam/wrong" icon={ClipboardList} title="错题集" detail="未掌握题目复盘" />
           <QuickLink href="/exam/history" icon={History} title="成绩单" detail="历史分数和答题详情" />
         </aside>
+      ) : null}
       </section>
 
       <section className="study-summary" aria-label="系统概览">
@@ -77,10 +84,12 @@ export default async function HomePage() {
             <span className="badge good">题库目录</span>
             <h2>按车型查看可练科目</h2>
           </div>
-          <Link className="button" href="/exam">
-            全部练习
-            <ArrowRight size={17} aria-hidden="true" />
-          </Link>
+          {canUsePracticeLinks ? (
+            <Link className="button" href="/exam">
+              全部练习
+              <ArrowRight size={17} aria-hidden="true" />
+            </Link>
+          ) : null}
         </div>
 
         <div className="vehicle-directory">
@@ -97,10 +106,10 @@ export default async function HomePage() {
                   </span>
                 </div>
                 <div className="subject-links">
-                  {vehicle ? (
-                    vehicle.subjects.map((subject) => (
-                      <Link
-                        className="subject-chip"
+            {vehicle && canUsePracticeLinks ? (
+              vehicle.subjects.map((subject) => (
+                <Link
+                  className="subject-chip"
                         href={`/exam?vehicle=${vehicle.code}&subject=${subject.code}`}
                         key={`${vehicle.code}-${subject.code}`}
                       >
@@ -108,9 +117,16 @@ export default async function HomePage() {
                         <strong>{subject.bank._count.questions}</strong>
                       </Link>
                     ))
-                  ) : (
-                    <span className="segment disabled">待同步</span>
-                  )}
+            ) : vehicle ? (
+              vehicle.subjects.map((subject) => (
+                <span className="subject-chip disabled" key={`${vehicle.code}-${subject.code}`}>
+                  <span>{subject.label}</span>
+                  <strong>{subject.bank._count.questions}</strong>
+                </span>
+              ))
+            ) : (
+              <span className="segment disabled">待同步</span>
+            )}
                 </div>
               </article>
             );

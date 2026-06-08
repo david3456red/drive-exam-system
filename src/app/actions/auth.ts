@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 
 import { loginPipeline } from '@/lib/auth-pipeline';
 import { prisma } from '@/lib/db';
-import { loginFailurePath, readLoginEntry } from '@/lib/login-flow';
+import { loginFailurePath, loginSuccessPath, readLoginEntry, type LoginEntry } from '@/lib/login-flow';
 import {
   clearSessionCookie,
   getCurrentUser,
@@ -42,6 +42,13 @@ export async function loginAction(formData: FormData): Promise<void> {
     );
   }
 
+  const successPath = loginSuccessPath(loginEntry, user.roleCode);
+  if (!successPath) {
+    redirect(
+      `${loginFailurePath(loginEntry)}?error=${encodeURIComponent('请使用对应的登录入口')}`,
+    );
+  }
+
   const sessionUser: SessionUser = {
     id: user.id,
     username: user.username,
@@ -50,7 +57,7 @@ export async function loginAction(formData: FormData): Promise<void> {
     permissionCodes: user.permissionCodes,
   };
   writeSessionCookie(sessionUser);
-  redirect(homeForRole(sessionUser.roleCode));
+  redirect(successPath);
 }
 
 export async function logoutAction(): Promise<void> {
@@ -83,7 +90,11 @@ export async function changePasswordAction(formData: FormData): Promise<void> {
   redirect(`/login?notice=${encodeURIComponent('密码已修改，请重新登录')}`);
 }
 
-export async function redirectAfterLogin(): Promise<void> {
+export async function redirectAfterLogin(loginEntry: LoginEntry = 'student'): Promise<void> {
   const user = getCurrentUser();
-  if (user) redirect(homeForRole(user.roleCode));
+  if (!user) return;
+
+  const successPath = loginSuccessPath(loginEntry, user.roleCode);
+  if (successPath) redirect(successPath);
+  redirect('/');
 }

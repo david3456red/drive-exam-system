@@ -7,7 +7,7 @@ type LoginPageProps = {
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  await redirectAfterLogin();
+  await redirectAfterLogin('student');
   return (
     <main className="page auth-page">
       <section className="auth-shell">

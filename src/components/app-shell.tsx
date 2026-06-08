@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
@@ -17,7 +20,7 @@ import {
 
 import { hasPermission, type PermissionCode } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/session';
-import { homeForRole } from '@/lib/session-shared';
+import { isStaffRole, isStudentRole } from '@/lib/login-flow';
 
 export type ShellNavItem = {
   href: string;
@@ -27,7 +30,9 @@ export type ShellNavItem = {
   tone?: 'primary';
 };
 
-const STUDENT_ROLES = new Set(['student_strict', 'student_normal']);
+export type ShellNavContext = {
+  isAdminPath: boolean;
+};
 
 const STUDENT_NAV: ShellNavItem[] = [
   { href: '/exam', label: '练习', icon: BookOpenCheck, tone: 'primary' },
@@ -46,15 +51,21 @@ const OPERATOR_NAV: ShellNavItem[] = [
   { href: '/change-password', label: '改密', icon: KeyRound },
 ];
 
-export function buildShellNav(user: SessionUser | null): ShellNavItem[] {
+export function buildShellNav(
+  user: SessionUser | null,
+  context: ShellNavContext = { isAdminPath: false },
+): ShellNavItem[] {
   if (!user) {
-    return [
-      { href: '/login', label: '学生登录', icon: BookOpenCheck, tone: 'primary' },
-      { href: '/admin/login', label: '后台登录', icon: ShieldCheck },
-    ];
+    return context.isAdminPath
+      ? [{ href: '/admin/login', label: '后台登录', icon: ShieldCheck, tone: 'primary' }]
+      : [{ href: '/login', label: '学生登录', icon: BookOpenCheck, tone: 'primary' }];
   }
 
-  if (STUDENT_ROLES.has(user.roleCode)) return STUDENT_NAV;
+  if (isStudentRole(user.roleCode)) return STUDENT_NAV;
+
+  if (!context.isAdminPath) {
+    return [{ href: '/change-password', label: '改密', icon: KeyRound }];
+  }
 
   return OPERATOR_NAV.filter((item) => {
     if (!item.permission) return true;
@@ -69,8 +80,10 @@ export function AppShellHeader({
   user: SessionUser | null;
   logoutAction: () => Promise<void>;
 }) {
-  const navItems = buildShellNav(user);
-  const homeHref = user ? homeForRole(user.roleCode) : '/';
+  const pathname = usePathname();
+  const isAdminPath = pathname.startsWith('/admin');
+  const navItems = buildShellNav(user, { isAdminPath });
+  const homeHref = isAdminPath && user && isStaffRole(user.roleCode) ? '/admin' : '/';
 
   return (
     <header className="topbar">
@@ -112,12 +125,12 @@ export function AppShellHeader({
                 </button>
               </form>
             </>
-          ) : (
-            <span className="nav-hint">
-              <LogIn size={15} aria-hidden="true" />
-              <span>选择入口登录</span>
-            </span>
-          )}
+      ) : (
+        <span className="nav-hint">
+          <LogIn size={15} aria-hidden="true" />
+          <span>{isAdminPath ? '后台入口' : '学生入口'}</span>
+        </span>
+      )}
         </nav>
       </div>
     </header>

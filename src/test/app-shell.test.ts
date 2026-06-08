@@ -15,8 +15,26 @@ function user(overrides: Partial<SessionUser>): SessionUser {
 }
 
 describe('buildShellNav', () => {
+  test('hides admin entry points on public pages', () => {
+    expect(buildShellNav(null, { isAdminPath: false }).map((item) => item.href)).toEqual([
+      '/login',
+    ]);
+
+    const items = buildShellNav(user({ roleCode: 'admin' }), { isAdminPath: false });
+    const hrefs = items.map((item) => item.href);
+
+    expect(hrefs).toEqual(['/change-password']);
+    expect(hrefs.some((href) => href.startsWith('/admin'))).toBe(false);
+  });
+
+  test('shows admin login only inside admin URLs', () => {
+    const items = buildShellNav(null, { isAdminPath: true });
+
+    expect(items.map((item) => item.href)).toEqual(['/admin/login']);
+  });
+
   test('shows practice entries for student users without admin links', () => {
-    const items = buildShellNav(user({ roleCode: 'student_strict' }));
+    const items = buildShellNav(user({ roleCode: 'student_strict' }), { isAdminPath: false });
     const hrefs = items.map((item) => item.href);
 
     expect(hrefs).toContain('/exam');
@@ -33,6 +51,7 @@ describe('buildShellNav', () => {
         roleCode: 'teacher',
         permissionCodes: ['question:read', 'stats:all'],
       }),
+      { isAdminPath: true },
     );
     const hrefs = items.map((item) => item.href);
 
@@ -46,7 +65,7 @@ describe('buildShellNav', () => {
   });
 
   test('shows all operator entries for super admin users', () => {
-    const items = buildShellNav(user({ roleCode: 'super_admin' }));
+    const items = buildShellNav(user({ roleCode: 'super_admin' }), { isAdminPath: true });
     const hrefs = items.map((item) => item.href);
 
     expect(hrefs).toEqual(

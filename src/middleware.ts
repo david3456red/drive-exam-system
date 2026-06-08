@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { isStaffRole, isStudentRole } from '@/lib/login-flow';
 import { SESSION_COOKIE_NAME } from '@/lib/session-shared';
 
 const PUBLIC_PATHS = ['/', '/login', '/admin/login'];
@@ -50,14 +51,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
-
-function isStudentRole(roleCode: string): boolean {
-  return roleCode === 'student_strict' || roleCode === 'student_normal';
-}
-
-function isStaffRole(roleCode: string): boolean {
-  return ['super_admin', 'admin', 'teacher'].includes(roleCode);
-}
 
 function readRoleFromToken(token: string | undefined): string | null {
   if (!token) return null;

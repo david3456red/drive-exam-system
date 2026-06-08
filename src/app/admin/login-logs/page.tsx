@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
+import { formatDeviceDisplay } from '@/lib/device-display';
 import { formatDateTime } from '@/lib/display';
 import { requireUser } from '@/lib/server-session';
 
@@ -31,6 +32,7 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
             { username: { contains: q } },
             { ip: { contains: q } },
             { deviceId: { contains: q } },
+            { userAgent: { contains: q } },
           ],
         }
       : {}),
@@ -93,7 +95,13 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
             </tr>
           </thead>
           <tbody>
-            {logs.map((log) => (
+          {logs.map((log) => {
+            const device = formatDeviceDisplay({
+              deviceId: log.deviceId,
+              userAgent: log.userAgent,
+            });
+
+            return (
               <tr key={log.id}>
                 <td>{formatDateTime(log.createdAt)}</td>
                 <td>{log.username}</td>
@@ -109,9 +117,13 @@ export default async function LoginLogsPage({ searchParams }: LogsPageProps) {
                 </td>
                 <td>{log.reason}</td>
                 <td>{log.ip}</td>
-                <td>{log.deviceId ?? '-'}</td>
+                <td className="device-cell">
+                  <span>{device.label}</span>
+                  <small>{device.shortId}</small>
+                </td>
               </tr>
-            ))}
+            );
+          })}
           </tbody>
         </table>
         {logs.length === 0 ? <div className="empty">暂无日志</div> : null}
