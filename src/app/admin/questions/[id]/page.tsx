@@ -8,6 +8,7 @@ import { QuestionImage } from '@/components/question-image';
 import { prisma } from '@/lib/db';
 import { QUESTION_TYPE_LABEL, parseQuestionOptions } from '@/lib/display';
 import type { QuestionType } from '@/lib/enums';
+import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
 
 type QuestionDetailPageProps = {
@@ -16,8 +17,8 @@ type QuestionDetailPageProps = {
 };
 
 export default async function QuestionDetailPage({ params, searchParams }: QuestionDetailPageProps) {
-  requireUser('question:read');
-  const question = await prisma.question.findUnique({
+ const user = requireUser('question:read');
+ const question = await prisma.question.findUnique({
     where: { id: params.id },
     include: {
       bank: true,
@@ -27,8 +28,10 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
   });
   if (!question) notFound();
 
-  const options = parseQuestionOptions(question.options);
-  const tags = parseStringArray(question.tags);
+ const options = parseQuestionOptions(question.options);
+ const tags = parseStringArray(question.tags);
+ const canWriteQuestion = hasPermission({ user }, 'question:write');
+ const canDeleteQuestion = hasPermission({ user }, 'question:delete');
 
   return (
     <main className="page stack">
@@ -38,10 +41,12 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
             <ArrowLeft size={17} aria-hidden="true" />
             返回题目
           </Link>
-          <Link className="button primary" href={`/admin/questions/${question.id}/edit`}>
-            <Pencil size={17} aria-hidden="true" />
-            编辑题目
-          </Link>
+ {canWriteQuestion ? (
+ <Link className="button primary" href={`/admin/questions/${question.id}/edit`}>
+ <Pencil size={17} aria-hidden="true" />
+ 编辑题目
+ </Link>
+ ) : null}
         </div>
         <h1>题目详情</h1>
         <p>查看题干、答案、选项和使用情况。已有答题记录的题目建议谨慎删除。</p>
@@ -100,15 +105,17 @@ export default async function QuestionDetailPage({ params, searchParams }: Quest
         </div>
       </section>
 
-      <form action={deleteQuestionAction}>
-        <input type="hidden" name="id" value={question.id} />
-        <button className="danger" disabled={question._count.records + question._count.wrongs > 0} type="submit">
-          <Trash2 size={17} aria-hidden="true" />
-          删除题目
-        </button>
-      </form>
-    </main>
-  );
+ {canDeleteQuestion ? (
+ <form action={deleteQuestionAction}>
+ <input type="hidden" name="id" value={question.id} />
+ <button className="danger" disabled={question._count.records + question._count.wrongs > 0} type="submit">
+ <Trash2 size={17} aria-hidden="true" />
+ 删除题目
+ </button>
+ </form>
+ ) : null}
+ </main>
+ );
 }
 
 function parseStringArray(raw: string): string[] {

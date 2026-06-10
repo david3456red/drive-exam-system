@@ -3,6 +3,7 @@ import { ArrowLeft, FolderTree, Save, Trash2 } from 'lucide-react';
 
 import { createCategoryAction, deleteCategoryAction } from '@/app/admin/actions';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
 
 type CategoriesPageProps = {
@@ -10,12 +11,14 @@ type CategoriesPageProps = {
 };
 
 export default async function CategoriesPage({ searchParams }: CategoriesPageProps) {
-  requireUser('category:read');
-  const categories = await prisma.category.findMany({
+ const user = requireUser('category:read');
+ const categories = await prisma.category.findMany({
     orderBy: [{ parentId: 'asc' }, { createdAt: 'asc' }],
     include: { _count: { select: { children: true, questions: true } } },
-  });
-  const nameById = new Map(categories.map((item) => [item.id, item.name]));
+ });
+ const nameById = new Map(categories.map((item) => [item.id, item.name]));
+ const canWriteCategory = hasPermission({ user }, 'category:write');
+ const canDeleteCategory = hasPermission({ user }, 'category:delete');
 
   return (
     <main className="page stack">
@@ -30,9 +33,10 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
       {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
       {searchParams?.notice ? <div className="notice">{searchParams.notice}</div> : null}
 
-      <section className="panel stack">
-        <h2>新建分类</h2>
-        <form action={createCategoryAction} className="grid">
+ {canWriteCategory ? (
+ <section className="panel stack">
+ <h2>新建分类</h2>
+ <form action={createCategoryAction} className="grid">
           <div className="field">
             <label htmlFor="name">
               <FolderTree size={15} aria-hidden="true" />
@@ -57,9 +61,10 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
           <button className="primary" type="submit">
             <Save size={17} aria-hidden="true" />
             创建分类
-          </button>
-        </form>
-      </section>
+ </button>
+ </form>
+ </section>
+ ) : null}
 
       <section className="table-wrap">
         <table>
@@ -80,18 +85,22 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
                 <td>{category._count.children}</td>
                 <td>{category._count.questions}</td>
                 <td>
-                  <form action={deleteCategoryAction}>
-                    <input type="hidden" name="id" value={category.id} />
-                    <button
+ {canDeleteCategory ? (
+ <form action={deleteCategoryAction}>
+ <input type="hidden" name="id" value={category.id} />
+ <button
                       className="danger"
                       disabled={category._count.children > 0}
                       title={category._count.children > 0 ? '请先删除子分类' : '删除分类'}
                       type="submit"
                     >
                       <Trash2 size={16} aria-hidden="true" />
-                      删除
-                    </button>
-                  </form>
+ 删除
+ </button>
+ </form>
+ ) : (
+ <span className="badge">只读</span>
+ )}
                 </td>
               </tr>
             ))}

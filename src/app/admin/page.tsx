@@ -34,13 +34,14 @@ const MODULES: Array<{
 
 export default async function AdminHomePage() {
   const user = requireUser();
-  const [bankCount, questionCount, studentCount, logCount] = await Promise.all([
-    prisma.questionBank.count(),
-    prisma.question.count(),
-    prisma.user.count({ where: { role: { code: { in: ['student_strict', 'student_normal'] } } } }),
-    prisma.loginLog.count(),
-  ]);
-  const visible = MODULES.filter((item) => hasPermission({ user }, item.permission));
+ const [bankCount, questionCount, studentCount, logCount] = await Promise.all([
+ prisma.questionBank.count(),
+ prisma.question.count(),
+ prisma.user.count({ where: { role: { code: { in: ['student_strict', 'student_normal'] } } } }),
+ prisma.loginLog.count(),
+ ]);
+ const visible = MODULES.filter((item) => hasPermission({ user }, item.permission));
+ const canCreateQuestion = hasPermission({ user }, 'question:write');
 
   return (
     <main className="page admin-dashboard">
@@ -53,10 +54,12 @@ export default async function AdminHomePage() {
           <h1>运营总览</h1>
           <p>题库、用户、练习统计与安全日志集中管理。所有页面都按角色权限过滤。</p>
         </div>
-        <Link className="button primary" href="/admin/questions/new">
-          <FilePlus2 size={17} aria-hidden="true" />
-          新建题目
-        </Link>
+ {canCreateQuestion ? (
+ <Link className="button primary" href="/admin/questions/new">
+ <FilePlus2 size={17} aria-hidden="true" />
+ 新建题目
+ </Link>
+ ) : null}
       </section>
 
       <section className="admin-summary" aria-label="关键指标">

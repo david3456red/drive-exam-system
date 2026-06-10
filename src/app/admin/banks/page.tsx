@@ -3,6 +3,7 @@ import { ArrowLeft, BookMarked, Eye, Save, Trash2 } from 'lucide-react';
 
 import { createBankAction, deleteBankAction } from '@/app/admin/actions';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
 
 type BanksPageProps = {
@@ -10,11 +11,13 @@ type BanksPageProps = {
 };
 
 export default async function BanksPage({ searchParams }: BanksPageProps) {
-  requireUser('bank:read');
-  const banks = await prisma.questionBank.findMany({
+ const user = requireUser('bank:read');
+ const banks = await prisma.questionBank.findMany({
     orderBy: [{ isBuiltin: 'desc' }, { createdAt: 'asc' }],
     include: { _count: { select: { questions: true, attempts: true } } },
-  });
+ });
+ const canWriteBank = hasPermission({ user }, 'bank:write');
+ const canDeleteBank = hasPermission({ user }, 'bank:delete');
 
   return (
     <main className="page stack">
@@ -22,9 +25,10 @@ export default async function BanksPage({ searchParams }: BanksPageProps) {
       {searchParams?.error ? <div className="error">{searchParams.error}</div> : null}
       {searchParams?.notice ? <div className="notice">{searchParams.notice}</div> : null}
 
-      <section className="panel stack">
-        <h2>新建或更新题库</h2>
-        <form action={createBankAction} className="grid">
+ {canWriteBank ? (
+ <section className="panel stack">
+ <h2>新建或更新题库</h2>
+ <form action={createBankAction} className="grid">
           <div className="field">
             <label htmlFor="code">
               <BookMarked size={15} aria-hidden="true" />
@@ -42,9 +46,10 @@ export default async function BanksPage({ searchParams }: BanksPageProps) {
           <button className="primary" type="submit">
             <Save size={17} aria-hidden="true" />
             保存题库
-          </button>
-        </form>
-      </section>
+ </button>
+ </form>
+ </section>
+ ) : null}
 
       <section className="table-wrap">
         <table>
@@ -74,18 +79,22 @@ export default async function BanksPage({ searchParams }: BanksPageProps) {
                         <Eye size={16} aria-hidden="true" />
                         查看题目
                       </Link>
-                      <form action={deleteBankAction}>
-                        <input type="hidden" name="id" value={bank.id} />
-                        <button
+ {canDeleteBank ? (
+ <form action={deleteBankAction}>
+ <input type="hidden" name="id" value={bank.id} />
+ <button
                           className="danger"
                           disabled={locked}
                           title={locked ? '内置题库或已有题目时不可删除' : '删除题库'}
                           type="submit"
                         >
                           <Trash2 size={16} aria-hidden="true" />
-                          删除
-                        </button>
-                      </form>
+ 删除
+ </button>
+ </form>
+ ) : (
+ <span className="badge">只读</span>
+ )}
                     </div>
                   </td>
                 </tr>

@@ -17,6 +17,7 @@ import {
 import { prisma } from '@/lib/db';
 import { QUESTION_TYPES, type QuestionType } from '@/lib/enums';
 import { QUESTION_TYPE_LABEL, formatDateTime } from '@/lib/display';
+import { hasPermission } from '@/lib/permissions';
 import { requireUser } from '@/lib/server-session';
 
 type QuestionsPageProps = {
@@ -31,8 +32,8 @@ type QuestionsPageProps = {
 };
 
 export default async function QuestionsPage({ searchParams }: QuestionsPageProps) {
-  requireUser('question:read');
-  const page = Math.max(1, Number(searchParams?.page ?? 1) || 1);
+ const user = requireUser('question:read');
+ const page = Math.max(1, Number(searchParams?.page ?? 1) || 1);
   const type = readQuestionType(searchParams?.type ?? '');
   const q = (searchParams?.q ?? '').trim();
   const bankId = searchParams?.bankId || undefined;
@@ -42,7 +43,7 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
     ...(q ? { content: { contains: q } } : {}),
   };
 
-  const [banks, rows, total] = await Promise.all([
+ const [banks, rows, total] = await Promise.all([
     prisma.questionBank.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.question.findMany({
       where,
@@ -52,7 +53,9 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
       include: { bank: true, categories: { include: { category: true } } },
     }),
     prisma.question.count({ where }),
-  ]);
+ ]);
+ const canWriteQuestion = hasPermission({ user }, 'question:write');
+ const canImportQuestion = hasPermission({ user }, 'question:import');
 
   return (
     <main className="page stack">
@@ -69,10 +72,14 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
 
       <section className="panel stack">
         <div className="cluster">
-          <Link className="button primary" href="/admin/questions/new">
-            <FilePlus2 size={17} aria-hidden="true" />
-            新建题目
-          </Link>
+ {canWriteQuestion ? (
+ <Link className="button primary" href="/admin/questions/new">
+ <FilePlus2 size={17} aria-hidden="true" />
+ 新建题目
+ </Link>
+ ) : null}
+ {canImportQuestion ? (
+ <>
  <Link className="button" href="/admin/questions/import">
  <Upload size={17} aria-hidden="true" />
  批量导入
@@ -81,6 +88,8 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
  <DownloadCloud size={17} aria-hidden="true" />
  悟空同步
  </Link>
+ </>
+ ) : null}
  <Link className="button" href="/admin/categories">
             <FolderTree size={17} aria-hidden="true" />
             分类管理
@@ -159,10 +168,12 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
                       <Eye size={16} aria-hidden="true" />
                       详情
                     </Link>
-                    <Link className="button" href={`/admin/questions/${question.id}/edit`}>
-                      <Pencil size={16} aria-hidden="true" />
-                      编辑
-                    </Link>
+ {canWriteQuestion ? (
+ <Link className="button" href={`/admin/questions/${question.id}/edit`}>
+ <Pencil size={16} aria-hidden="true" />
+ 编辑
+ </Link>
+ ) : null}
                   </div>
                 </td>
               </tr>
