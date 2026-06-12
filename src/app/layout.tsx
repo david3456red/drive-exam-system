@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/server-session';
 export const metadata: Metadata = {
   title: '驾考工作台',
   description: '驾考练习、模拟考试、错题复盘和题库运营工作台',
+  icons: { icon: '/favicon.svg' },
 };
 
 export default function RootLayout({
