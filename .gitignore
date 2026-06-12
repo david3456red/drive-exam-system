@@ -67,4 +67,5 @@ next-env.d.ts
 
 # Local browser automation runtime
 .agent-browser-profile/
-dogfood-output/*.mjs
+.qa-*/
+dogfood-output/
