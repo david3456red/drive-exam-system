@@ -151,6 +151,39 @@ describe('answer navigation actions', () => {
     ).resolves.toBe(0);
   });
 
+  it('keeps the submitted practice question current so feedback is visible', async () => {
+    const fixture = await seedFixture(2);
+    authState.user.id = fixture.userId;
+    const attempt = await prisma.examAttempt.create({
+      data: {
+        userId: fixture.userId,
+        bankId: fixture.bankId,
+        mode: 'SEQUENTIAL',
+        status: 'ONGOING',
+        questionOrder: serializeOrder(fixture.questionIds),
+        currentIndex: 0,
+        categoryIds: '[]',
+      },
+    });
+    const formData = new FormData();
+    formData.set('attemptId', attempt.id);
+    formData.set('questionId', fixture.questionIds[0]!);
+    formData.set('answer', 'A');
+    formData.set('costMs', '500');
+
+    await expect(actions.submitAnswerAction(formData)).rejects.toThrow(
+      `REDIRECT:/exam/session/${attempt.id}`,
+    );
+
+    const stored = await prisma.examAttempt.findUniqueOrThrow({
+      where: { id: attempt.id },
+    });
+    expect(stored.currentIndex).toBe(0);
+    await expect(
+      prisma.examRecord.count({ where: { attemptId: attempt.id } }),
+    ).resolves.toBe(1);
+  });
+
   it('keeps a practice attempt ongoing after the final unanswered question is submitted', async () => {
     const fixture = await seedFixture(2);
     authState.user.id = fixture.userId;

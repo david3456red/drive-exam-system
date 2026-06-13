@@ -178,15 +178,17 @@ export async function submitAnswerAction(formData: FormData): Promise<void> {
       }
     }
 
-    const answered = await tx.examRecord.findMany({
-      where: { attemptId: attempt.id },
-      select: { questionId: true },
-    });
-    nextCurrentIndex = findNextUnansweredIndex(
-      order,
-      answered.map((record) => record.questionId),
-      submittedQuestion.index,
-    );
+    if (attempt.mode === 'MOCK') {
+      const answered = await tx.examRecord.findMany({
+        where: { attemptId: attempt.id },
+        select: { questionId: true },
+      });
+      nextCurrentIndex = findNextUnansweredIndex(
+        order,
+        answered.map((record) => record.questionId),
+        submittedQuestion.index,
+      );
+    }
     await tx.examAttempt.update({
       where: { id: attempt.id },
       data: { currentIndex: nextCurrentIndex },
